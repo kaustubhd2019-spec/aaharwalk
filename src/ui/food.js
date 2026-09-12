@@ -197,7 +197,7 @@ export function openFoodLogSheet(app, { prefill = null, slot = null, date = null
     ]),
     el("div", { class: "row", style: "gap:8px" }, [parseButton]),
     el("div", { class: "field" }, [el("label", { text: t("add_manually") }), searchBox, searchResults]),
-    el("div", { class: "field" }, [el("label", { text: t("portion") + " — " + t("nav_food") }), slotRow]),
+    el("div", { class: "field" }, [el("label", { text: t("which_meal") }), slotRow]),
     resultHost
   );
 
