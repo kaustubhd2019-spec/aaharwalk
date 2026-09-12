@@ -24,7 +24,7 @@ function emptyState() {
       stepSource: "manual",
       walkSensitivity: "normal"
     },
-    meta: { createdAt: new Date().toISOString(), demoLoaded: false }
+    meta: { createdAt: new Date().toISOString(), demoLoaded: false, walkedStepsRepaired: false }
   };
 }
 

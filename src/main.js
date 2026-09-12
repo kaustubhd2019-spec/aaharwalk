@@ -136,6 +136,28 @@ window.__AW_BOOTED = true;
 render();
 startWaterReminders();
 
+/**
+ * One-off repair for days an earlier build dropped: Walk mode banked its count
+ * in walkedSteps but, when the phone's counter was silent, never added it to
+ * the day's total. Those steps were really taken, so give them back — once, so
+ * a later manual correction is not overwritten on every launch.
+ */
+function repairDroppedWalkSteps() {
+  const state = getState();
+  if (!state.profile || state.meta.walkedStepsRepaired) return;
+  update(s => {
+    for (const day of Object.values(s.days)) {
+      if ((day.walkedSteps || 0) > (day.steps || 0)) {
+        day.steps = day.walkedSteps;
+        if (!day.stepsSource || day.stepsSource === "manual") day.stepsSource = "walk";
+      }
+    }
+    s.meta.walkedStepsRepaired = true;
+  });
+}
+
+repairDroppedWalkSteps();
+
 /* Inside the Android app the phone counts steps all day on its own. Adopt that
    as the source of truth and keep today's total in step with it. */
 function startNativeStepSync() {
