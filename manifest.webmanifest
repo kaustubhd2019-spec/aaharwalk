@@ -1,19 +1,21 @@
 {
   "id": "/",
-  "name": "AaharWalk",
+  "name": "AaharWalk — food, walking & workout coach",
   "short_name": "AaharWalk",
-  "description": "BMI walking target, step calorie history, and Indian meal calorie estimator.",
+  "description": "A private, offline-first coach for Indian and Maharashtrian eating, daily steps, water and short home workouts.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fbfaf6",
-  "theme_color": "#0f766e",
+  "background_color": "#f6f5f1",
+  "theme_color": "#12766a",
   "categories": [
     "health",
     "fitness",
+    "lifestyle",
     "food"
   ],
+  "lang": "en-IN",
   "icons": [
     {
       "src": "assets/icon-192.png",
@@ -36,9 +38,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Log steps",
-      "short_name": "Steps",
-      "url": "./index.html#steps",
+      "name": "Log food",
+      "short_name": "Food",
+      "url": "./index.html#food",
       "icons": [
         {
           "src": "assets/icon-192.png",
@@ -47,9 +49,20 @@
       ]
     },
     {
-      "name": "Log meal",
-      "short_name": "Meals",
-      "url": "./index.html#meals",
+      "name": "Start workout",
+      "short_name": "Workout",
+      "url": "./index.html#activity",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Plan my day",
+      "short_name": "Plan",
+      "url": "./index.html#plan",
       "icons": [
         {
           "src": "assets/icon-192.png",
@@ -57,5 +70,15 @@
         }
       ]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  }
 }

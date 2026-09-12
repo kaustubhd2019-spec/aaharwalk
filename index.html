@@ -2,312 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AaharWalk — BMI, Steps & Indian Meal Calories</title>
-  <meta name="description" content="A local-first BMI walking target, step calorie tracker, and multilingual Indian meal calorie calculator.">
-  <meta name="theme-color" content="#0f766e">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+  <title>AaharWalk — food, walking & home-workout coach</title>
+  <meta name="description" content="A private, offline-first coach for Indian and Maharashtrian eating, daily steps, water and 15–20 minute home workouts.">
+  <meta name="theme-color" content="#12766a" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#101413" media="(prefers-color-scheme: dark)">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="AaharWalk">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AaharWalk">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-content">
-      <div class="logo-row">
-        <div class="logo" aria-hidden="true">🥗</div>
-        <div>
-          <strong>AaharWalk</strong><br>
-          <span>local-first health tracker</span>
-        </div>
-      </div>
-      <h1>BMI walking goals, step calories, and Indian meal estimates.</h1>
-      <p>
-        Calculate how much to walk toward a target weight, estimate calories burned from daily steps,
-        and log Indian meals in English, Hindi, or Marathi-style names like chapati, roti, पोळी, दाल, डाळ, भात, bhaji, sabzi, kela, and more.
-      </p>
-      <nav class="quick-nav" aria-label="App sections">
-        <a href="#walk">Walking goal</a>
-        <a href="#steps">Step calories & history</a>
-        <a href="#meals">Indian meal calories</a>
-        <a href="#foods">Food database</a>
-      </nav>
+  <div id="app"></div>
+
+  <noscript>
+    <div class="boot-error">
+      <strong>AaharWalk needs JavaScript.</strong>
+      <p>Everything runs on your device — there is no server — so the app can't work with scripts turned off.</p>
     </div>
-  </header>
+  </noscript>
 
-  <section class="install-card" id="installCard" hidden>
-    <div>
-      <strong>Install AaharWalk like a normal app</strong>
-      <p id="installHelp">Tap Install app, or use your browser menu to add it to your home screen.</p>
-    </div>
-    <button type="button" id="installAppButton" class="install-button">Install app</button>
-  </section>
+  <!-- Shown only if the app never boots (e.g. opened straight off the filesystem). -->
+  <div id="bootHelp" class="boot-error" hidden>
+    <strong>Almost there — AaharWalk needs to be served over http.</strong>
+    <p>Browsers block JavaScript modules on <code>file://</code> pages. From this folder run:</p>
+    <p><code>python3 -m http.server 8000</code></p>
+    <p>then open <code>http://localhost:8000</code>. To install it on a phone, host the folder on any HTTPS site — see <code>INSTALL_MOBILE.md</code>.</p>
+  </div>
 
-  <main>
-    <section id="walk" class="panel">
-      <div class="panel-header">
-        <span class="panel-eyebrow">First tool</span>
-        <h2>Daily walking calculator based on BMI</h2>
-        <p>Enter your height, current weight, target weight, and goal duration. The estimate assumes walking creates the full energy gap; in reality, diet and strength work usually matter too.</p>
-      </div>
-      <div class="panel-body">
-        <div class="grid two">
-          <form id="goal-form" class="form-card">
-            <div class="form-row">
-              <div class="field">
-                <label for="heightFeet">Height — feet</label>
-                <input id="heightFeet" type="number" min="1" max="8" step="1" inputmode="numeric" placeholder="5">
-              </div>
-              <div class="field">
-                <label for="heightInches">Height — inches</label>
-                <input id="heightInches" type="number" min="0" max="11" step="1" inputmode="numeric" placeholder="8">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label for="currentWeight">Current weight (kg)</label>
-                <input id="currentWeight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="82">
-              </div>
-              <div class="field">
-                <label for="targetWeight">Target weight (kg)</label>
-                <input id="targetWeight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="74">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label for="targetWeeks">Goal duration (weeks)</label>
-                <input id="targetWeeks" type="number" min="1" max="104" step="1" inputmode="numeric">
-              </div>
-              <div class="field">
-                <label for="goalPace">Walking pace</label>
-                <select id="goalPace"></select>
-              </div>
-            </div>
-            <label class="inline-check">
-              <input id="indianRisk" type="checkbox">
-              Show Indian/South-Asian BMI risk view
-            </label>
-            <div class="actions">
-              <button type="submit">Calculate walking target</button>
-              <button type="button" class="ghost" id="printPage">Print / Save PDF</button>
-            </div>
-          </form>
+  <div id="installCard" class="install-card" hidden>
+    <button id="installAppButton" class="btn sm" type="button">Install AaharWalk</button>
+    <button id="installDismiss" class="icon-btn" type="button" aria-label="Not now" style="margin-left:8px">✕</button>
+  </div>
 
-          <div>
-            <div id="goal-output" class="result-box" aria-live="polite"></div>
-            <div id="formula-box"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="steps" class="panel">
-      <div class="panel-header">
-        <span class="panel-eyebrow">Second tool</span>
-        <h2>Calories burned from steps, with history</h2>
-        <p>Log steps each day. Data is saved only in this browser using local storage, and you can export CSV or a full JSON backup.</p>
-      </div>
-      <div class="panel-body">
-        <div class="grid two">
-          <div class="form-card">
-            <div class="form-row">
-              <div class="field">
-                <label for="stepsDate">Date</label>
-                <input id="stepsDate" type="date">
-              </div>
-              <div class="field">
-                <label for="stepsCount">Steps walked</label>
-                <input id="stepsCount" type="number" min="0" step="1" inputmode="numeric" placeholder="8500">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="field">
-                <label for="stepsWeight">Weight used for estimate (kg)</label>
-                <input id="stepsWeight" type="number" min="20" max="300" step="0.1" inputmode="decimal" placeholder="82">
-              </div>
-              <div class="field">
-                <label for="stepsPace">Walking pace</label>
-                <select id="stepsPace"></select>
-              </div>
-            </div>
-            <div class="field">
-              <label for="stepsNotes">Notes</label>
-              <input id="stepsNotes" type="text" maxlength="120" placeholder="Morning walk, office commute, treadmill...">
-            </div>
-            <div class="actions">
-              <button type="button" id="steps-calc">Calculate</button>
-              <button type="button" class="secondary" id="steps-save">Calculate & save</button>
-            </div>
-          </div>
-          <div id="steps-output" class="result-box" aria-live="polite"></div>
-        </div>
-
-        <div class="history-toolbar">
-          <div id="steps-summary" class="summary-chips"></div>
-          <div class="actions">
-            <button type="button" class="ghost" id="exportSteps">Export step CSV</button>
-            <button type="button" class="ghost danger" id="clearSteps">Clear steps</button>
-          </div>
-        </div>
-        <div id="steps-chart"></div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Steps</th>
-                <th>Calories</th>
-                <th>Minutes</th>
-                <th>Pace</th>
-                <th>Notes</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="steps-history-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="meals" class="panel">
-      <div class="panel-header">
-        <span class="panel-eyebrow">Third tool</span>
-        <h2>Indian meal calorie calculator</h2>
-        <p>Use natural entries by count or serving: “2 chapati”, “1 bowl dal”, “1 वाटी भात”, “ek kela”, “1 कटोरी rajma”. No gram weighing required.</p>
-      </div>
-      <div class="panel-body">
-        <div class="grid two">
-          <div class="form-card">
-            <div class="form-row">
-              <div class="field">
-                <label for="mealDate">Date</label>
-                <input id="mealDate" type="date">
-              </div>
-              <div class="field">
-                <label for="mealName">Meal name</label>
-                <input id="mealName" type="text" maxlength="60" placeholder="Breakfast / Lunch / Dinner">
-              </div>
-            </div>
-            <div class="field">
-              <label for="mealInput">Meal items</label>
-              <textarea id="mealInput" placeholder="Example:
-2 chapati, 1 bowl dal, 1 bowl rice
-1 वाटी भाजी, 1 पोळी
-ek kela, 1 cup chai"></textarea>
-            </div>
-            <label class="inline-check">
-              <input id="liveMealToggle" type="checkbox" checked>
-              Estimate while typing
-            </label>
-            <div class="actions">
-              <button type="button" id="meal-estimate">Estimate meal</button>
-              <button type="button" class="secondary" id="meal-save">Estimate & save</button>
-              <button type="button" class="ghost" id="mealExamples">Load examples</button>
-            </div>
-          </div>
-          <div id="meal-output" class="result-box" aria-live="polite"></div>
-        </div>
-
-        <div class="history-toolbar">
-          <div id="meal-summary" class="summary-chips"></div>
-          <div class="actions">
-            <button type="button" class="ghost" id="exportMeals">Export meal CSV</button>
-            <button type="button" class="ghost danger" id="clearMeals">Clear meals</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Meal</th>
-                <th>Calories</th>
-                <th>Matched items</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="meal-history-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="foods" class="panel">
-      <div class="panel-header">
-        <span class="panel-eyebrow">Food brain</span>
-        <h2>Search and extend the Indian food database</h2>
-        <p>The built-in list covers common Indian dals, sabzi/bhaji, breads, rice dishes, salads, fruits, breakfast items, dairy, and sweets. Add your own home recipes to improve accuracy.</p>
-      </div>
-      <div class="panel-body">
-        <div class="food-tools">
-          <input id="foodSearch" type="search" placeholder="Search: chapati, पोळी, dal, डाळ, bhendi, kela, राजमा...">
-          <select id="categoryFilter"></select>
-        </div>
-        <div class="history-toolbar">
-          <div id="food-count" class="summary-chips"></div>
-        </div>
-        <div id="food-browser" class="food-browser"></div>
-
-        <form id="custom-food-form" class="form-card" style="margin-top: 18px;">
-          <h3>Add a custom food or household serving</h3>
-          <div class="form-row three">
-            <div class="field">
-              <label for="customFoodName">Food name</label>
-              <input id="customFoodName" type="text" placeholder="Home dal with tadka">
-            </div>
-            <div class="field">
-              <label for="customFoodCalories">Calories per serving</label>
-              <input id="customFoodCalories" type="number" min="1" step="1" inputmode="numeric" placeholder="210">
-            </div>
-            <div class="field">
-              <label for="customFoodServing">Serving label</label>
-              <input id="customFoodServing" type="text" placeholder="1 bowl / 1 katori">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="field">
-              <label for="customFoodCategory">Category</label>
-              <input id="customFoodCategory" type="text" placeholder="Custom">
-            </div>
-            <div class="field">
-              <label for="customFoodAliases">Aliases, comma separated</label>
-              <input id="customFoodAliases" type="text" placeholder="ghar ki dal, घर की दाल, आमची डाळ">
-            </div>
-          </div>
-          <div class="actions">
-            <button type="submit">Add custom food</button>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <aside class="backup-card">
-      <div>
-        <strong>Backup & restore</strong>
-        <p>Your logs live in this browser. Export a JSON backup before changing phones, clearing browser data, or angering the tiny storage goblin.</p>
-      </div>
-      <div class="actions">
-        <button type="button" id="exportBackup">Export full backup</button>
-        <label class="button-like ghost">
-          Restore backup
-          <input id="restoreBackup" type="file" accept="application/json">
-        </label>
-      </div>
-    </aside>
-  </main>
-
-  <footer class="footer">
-    <p>Estimates only. For pregnancy, chronic disease, eating disorder history, injury, or rapid weight-loss plans, ask a qualified clinician.</p>
-  </footer>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <script src="food-data.js"></script>
-  <script src="app.js"></script>
-  <script src="pwa.js"></script>
+  <script type="module" src="src/main.js"></script>
+  <script src="pwa.js" defer></script>
+  <script>
+    setTimeout(function () {
+      if (!window.__AW_BOOTED) document.getElementById("bootHelp").hidden = false;
+    }, 1200);
+  </script>
 </body>
 </html>
