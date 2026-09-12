@@ -94,10 +94,10 @@ export function renderHome(root, app) {
     el("div", { class: "quick-grid" }, [
       quick("plus", t("log_food"), () => app.openFoodLog()),
       quick("drop", t("add_water"), () => app.openWater()),
-      quick("shoe", t("log_steps"), () => app.openSteps()),
+      quick("shoe", t("start_walk"), () => app.openWalk()),
       quick("dumbbell", t("start_workout"), () => app.openWorkout()),
       quick("scale", t("log_weight"), () => app.openWeight()),
-      quick("plan", t("plan_meals"), () => app.go("plan"))
+      quick("plan", t("log_steps"), () => app.openSteps())
     ])
   ]));
 

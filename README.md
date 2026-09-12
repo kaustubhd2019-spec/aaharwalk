@@ -45,27 +45,38 @@ the cuisines you actually cook. It will not keep suggesting oats and quinoa.
 adapted to your level, age, equipment and how the last session felt, with a full-screen
 timer, cues for every move and deliberately conservative calorie estimates.
 
-**Steps, water, weight and a weekly report**, plus a coach panel that says something
+**Step counting on the phone itself** (see below), plus water, weight and a weekly report, plus a coach panel that says something
 specific about today rather than cheering. Never any shaming language.
 
 **English and Marathi** throughout, switchable at any time.
 
 ---
 
-## Getting your step count in
+## Steps: three ways in
 
-A web app cannot read another Android app's data — Step Set Go, Google Fit, Samsung Health
-and Health Connect have no browser API. Two things that *do* work today:
+**1. The app counts them itself.** Tap **Count my walk** and the phone's accelerometer
+counts your steps live — distance, time and calories alongside, with progress toward
+today's goal. It takes a screen wake lock, so you can pocket the phone and keep walking.
+There is a sensitivity setting if it over- or under-counts for the way you carry it.
 
-1. **Share sheet.** Install AaharWalk to your home screen and it registers as a share target.
-   In Step Set Go, tap Share on today's steps → choose AaharWalk. The count is read out of
-   the shared text and pre-filled for you.
-2. **Paste.** Copy anything containing the number — `Today · 11,208 steps · 5.4 km`,
-   `आज ८४२० पावलं` — and paste it into the steps sheet. The number gets picked out.
+The honest limit: **a web app cannot count in the background.** Browsers suspend sensor
+events the moment the page is hidden or the screen locks — there is no API around this
+short of a native app. So Walk mode covers deliberate walks, not your whole day.
 
-Pick your source once in the steps sheet and the right instructions stick.
+Motion sensors also need a secure page, so this works on `https://` or `localhost`.
+On iPhone the browser asks permission the first time you tap Start.
 
----
+**2. Share from the app you already use.** Once AaharWalk is installed to your home screen
+it registers as an Android share target. In **Step Set Go**, tap Share on today's steps →
+choose AaharWalk. The count is read out of the shared text and pre-filled. Google Fit and
+Samsung Health work the same way.
+
+**3. Paste or type.** Copy anything containing the number — `Today · 11,208 steps · 5.4 km`,
+`आज ८४२० पावलं` — and paste it into the steps sheet; the number gets picked out. Or just
+type it. Pick your source once and the right instructions stick.
+
+Steps the app counted itself are credited separately on the Activity screen, so you can
+see how much of the day's total came from Walk mode.
 
 ## Tests
 
@@ -73,8 +84,9 @@ Pick your source once in the steps sheet and the right instructions stick.
 node tests/run.mjs
 ```
 
-42 checks over the parser, the oil model, food-data integrity, target maths, the planner,
-workout generation and step import. No dependencies.
+49 checks over the parser, the oil model, food-data integrity, target maths, the planner,
+workout generation, step import and the pedometer (against synthetic accelerometer
+traces at several walking cadences). No dependencies.
 
 ## Running it
 
@@ -113,8 +125,9 @@ src/
             coach.js        the coaching voice (bilingual)
             session.js      assembles "what does today look like"
             steps-import.js reading a step count out of shared or pasted text
+            pedometer.js    counting steps from the accelerometer
   ui/       components.js  onboarding.js  home.js  food.js
-            activity.js  plan.js  profile.js  workout.js
+            activity.js  plan.js  profile.js  workout.js  walk.js
   main.js   routing and the app shell
 ```
 
@@ -133,6 +146,11 @@ The split that matters: **the parser decides *what* and *how much*; the database
   **water** ~30 ml per kg plus an allowance for walking.
 - **Steps** — start from your own baseline and add 1,000 a week toward a sustainable ceiling.
   Today's own steps never move today's goal.
+- **Step detection** — gravity removed with a slow moving average, an adaptive threshold
+  from the recent swing of the signal, and peak counting with hysteresis and a 260 ms
+  minimum gap. The first few detections are held back until the cadence looks like real
+  walking, so picking the phone up does not add steps. Distance uses a stride of
+  0.414 × height.
 - **Food** — per-serving values from common Indian food-composition references. The oil
   slider scales the fat already in the recipe (0.45× / 1× / 1.8×) at 9 kcal per gram.
 - **Workouts** — MET-based, counting rest at a resting MET and rounding *down*.

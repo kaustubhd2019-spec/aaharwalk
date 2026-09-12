@@ -26,7 +26,8 @@ const PATHS = {
   pause: "M9 5v14M15 5v14",
   play: "M7 4.5 19 12 7 19.5V4.5Z",
   flag: "M6 21V4h11l-2 3.5L17 11H6",
-  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3.5 2"
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3.5 2",
+  sliders: "M4 7h10M18 7h2M4 12h4M12 12h8M4 17h9M17 17h3M16 7a2 2 0 1 0 0-.1M10 12a2 2 0 1 0 0-.1M15 17a2 2 0 1 0 0-.1"
 };
 
 export function icon(name, size = 22, stroke = 1.7) {

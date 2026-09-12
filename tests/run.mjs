@@ -6,6 +6,7 @@ import { computeTargets, stepTarget, bmr, calorieTarget, maintenanceCalories, we
 import { planDay, suggestNext, nextSlotByClock, describeMeal } from "../src/engine/planner.js";
 import { buildWorkout } from "../src/engine/workouts.js";
 import { parseSteps } from "../src/engine/steps-import.js";
+import { createDetector, strideMetres, distanceKm, walkCalories } from "../src/engine/pedometer.js";
 import { FOODS, FOOD_BY_ID, AMBIGUOUS } from "../src/data/foods.js";
 import { MEAL_IDEAS } from "../src/data/mealIdeas.js";
 import { unitsFor, gramsFor } from "../src/data/units.js";
@@ -351,6 +352,91 @@ test("does not mistake calories, distance or weight for steps", () => {
   eq(parseSteps("My weight is 82 kg"), null);
   eq(parseSteps("no numbers here"), null);
   eq(parseSteps("Today 6842 steps · 320 kcal · 4.8 km").steps, 6842);
+});
+
+/* ——— pedometer ————————————————————————————————————————————— */
+
+/* Synthetic 50 Hz accelerometer traces: a vertical bounce at the step
+   frequency on top of gravity, plus a little noise. */
+function walkTrace({ seconds, cadenceHz, amplitude, noise = 0.15, hz = 50, seed = 1, offsetMs = 0 }) {
+  const out = [];
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647 - 0.5) * 2;
+  for (let i = 0; i < seconds * hz; i++) {
+    const bounce = Math.sin(2 * Math.PI * cadenceHz * (i / hz)) * amplitude;
+    out.push([rnd() * noise, rnd() * noise, 9.81 + bounce + rnd() * noise, offsetMs + (i / hz) * 1000]);
+  }
+  return out;
+}
+function stillTrace({ seconds, noise = 0.05, hz = 50, seed = 7, offsetMs = 0 }) {
+  const out = [];
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647 - 0.5) * 2;
+  for (let i = 0; i < seconds * hz; i++) out.push([rnd() * noise, rnd() * noise, 9.81 + rnd() * noise, offsetMs + (i / hz) * 1000]);
+  return out;
+}
+function countSteps(samples, opts = {}) {
+  const d = createDetector(opts);
+  for (const [x, y, z, t] of samples) { d.push(x, y, z, t); d.idle(t); }
+  return d.steps;
+}
+
+test("counts steps within 10% across walking speeds", () => {
+  const cases = [
+    ["slow, in a pocket", { seconds: 60, cadenceHz: 1.6, amplitude: 2.5 }, 96],
+    ["normal", { seconds: 60, cadenceHz: 1.9, amplitude: 3.0 }, 114],
+    ["brisk", { seconds: 60, cadenceHz: 2.3, amplitude: 4.0 }, 138],
+    ["gentle, phone in hand", { seconds: 60, cadenceHz: 1.8, amplitude: 1.2 }, 108],
+    ["short walk", { seconds: 10, cadenceHz: 2.0, amplitude: 3.0 }, 20]
+  ];
+  for (const [label, trace, expected] of cases) {
+    const got = countSteps(walkTrace(trace));
+    ok(Math.abs(got - expected) <= expected * 0.1, `${label}: expected ~${expected}, got ${got}`);
+  }
+});
+
+test("counts nothing when the phone is not moving", () => {
+  eq(countSteps(stillTrace({ seconds: 60 })), 0, "sitting still");
+  eq(countSteps(stillTrace({ seconds: 120, noise: 0.02 })), 0, "on a desk");
+});
+
+test("a single jolt is not three steps", () => {
+  const jostle = [
+    ...stillTrace({ seconds: 5 }),
+    ...walkTrace({ seconds: 0.8, cadenceHz: 2, amplitude: 5, offsetMs: 5000 }),
+    ...stillTrace({ seconds: 10, offsetMs: 5800 })
+  ];
+  ok(countSteps(jostle) <= 2, `picking the phone up counted ${countSteps(jostle)} steps`);
+});
+
+test("keeps counting correctly across a rest in the middle", () => {
+  const trace = [
+    ...walkTrace({ seconds: 20, cadenceHz: 1.9, amplitude: 3 }),
+    ...stillTrace({ seconds: 15, offsetMs: 20000 }),
+    ...walkTrace({ seconds: 20, cadenceHz: 1.9, amplitude: 3, seed: 3, offsetMs: 35000 })
+  ];
+  const got = countSteps(trace);
+  ok(Math.abs(got - 76) <= 8, `expected ~76 across the pause, got ${got}`);
+});
+
+test("jogging does not inflate the count", () => {
+  const got = countSteps(walkTrace({ seconds: 60, cadenceHz: 3.0, amplitude: 6 }));
+  ok(got <= 200, `expected ~180, got ${got}`);
+});
+
+test("sensitivity settings all work on a normal walk", () => {
+  const trace = walkTrace({ seconds: 60, cadenceHz: 1.9, amplitude: 2.0 });
+  for (const sensitivity of ["low", "normal", "high"]) {
+    const got = countSteps(trace, { sensitivity });
+    ok(Math.abs(got - 114) <= 12, `${sensitivity}: got ${got}`);
+  }
+});
+
+test("distance and calories follow from steps", () => {
+  near(strideMetres(173), 0.716, 0.01, "stride");
+  near(distanceKm(1000, 173), 0.716, 0.01, "1000 steps");
+  ok(walkCalories(1000, 82) > 0 && walkCalories(1000, 82) < 60, "conservative burn");
+  ok(walkCalories(1000, 90) > walkCalories(1000, 60), "heavier burns more");
 });
 
 /* ——— report ————————————————————————————————————————————————— */

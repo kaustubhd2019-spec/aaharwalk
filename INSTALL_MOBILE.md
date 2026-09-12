@@ -21,19 +21,27 @@ Then open the hosted link on your phone.
 1. Open the hosted link in Safari.
 2. Tap **Share → Add to Home Screen → Add**.
 
-## 3. Connect your step counter
+## 3. Steps
 
-Installing to the home screen is what enables the Android share sheet integration:
+**Let the app count them.** Tap **Count my walk** on the Home screen and the phone's
+accelerometer counts your steps live. The app keeps the screen awake, so you can put the
+phone in your pocket and walk. On iPhone, Safari asks permission the first time.
 
-- **Step Set Go** — open it, tap Share on today's steps, choose **AaharWalk**. The step count
-  is read from the shared text and pre-filled.
+This only works while the app is open — browsers stop sensors once the screen locks, and no
+web app can get around that. It covers deliberate walks, not the whole day.
+
+**Or bring in a whole day's total from an app you already use:**
+
+- **Step Set Go** — open it, tap Share on today's steps, choose **AaharWalk**. The count is
+  read from the shared text and pre-filled. (Installing to the home screen is what makes
+  AaharWalk appear in the share sheet.)
 - **Google Fit / Samsung Health / your phone's health app** — share or copy today's step
   count and paste it into the steps sheet.
 
 Set your source once in **Activity → Log steps** and the right instructions stay put.
 
-(A web app cannot read another app's data directly — none of these offer a browser API — so
-sharing or pasting the number is the honest way to do this without an account or a server.)
+(No browser API can read another app's data directly, so sharing or pasting the number is the
+honest way to do this without an account or a server.)
 
 ## Notifications
 

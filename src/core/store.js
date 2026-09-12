@@ -21,7 +21,8 @@ function emptyState() {
     settings: {
       lang: "en",
       reminders: { water: true, wakeTime: "07:00", sleepTime: "22:30", everyMinutes: 120 },
-      stepSource: "manual"
+      stepSource: "manual",
+      walkSensitivity: "normal"
     },
     meta: { createdAt: new Date().toISOString(), demoLoaded: false }
   };
@@ -34,6 +35,7 @@ export function emptyDay(date) {
     waterMl: 0,
     steps: 0,
     stepsSource: "manual",
+    walkedSteps: 0,       // the portion this phone counted in Walk mode
     weightKg: null,
     workout: null,          // { id, title, minutes, kcal, completedAt }
     notes: ""

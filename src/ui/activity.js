@@ -32,14 +32,19 @@ export function renderActivity(root, app) {
 
   screen.append(card([
     cardHead(t("todays_steps"), el("button", {
-      class: "btn sm soft", type: "button", text: t("log_steps"), onclick: () => openStepsSheet(app)
+      class: "btn sm subtle", type: "button", text: t("log_steps"), onclick: () => openStepsSheet(app)
     })),
     el("div", { class: "row between", style: "align-items:baseline" }, [
       el("div", { style: "font-size:30px;font-weight:720;letter-spacing:-.03em", text: fmt(day.steps || 0) }),
       el("span", { class: "small muted", text: `${t("target")} ${fmt(targets.steps)}` })
     ]),
+    day.walkedSteps ? el("div", { class: "small muted", style: "margin-top:2px",
+      text: `${fmt(day.walkedSteps)} ${t("counted_by_app")}` }) : null,
     el("div", { style: "height:12px" }),
     metric({ name: t("step_goal"), value: day.steps || 0, target: targets.steps, tone: "sky" }),
+    el("div", { style: "height:14px" }),
+    el("button", { class: "btn block", type: "button", onclick: () => app.openWalk() },
+      [icon("shoe", 17), t("start_walk")]),
     el("div", { style: "height:16px" }),
     el("div", { class: "card-title", style: "margin-bottom:8px", text: t("last_7_days") }),
     barChart(
@@ -217,6 +222,10 @@ export function openStepsSheet(app, { prefill = null, sharedText = null } = {}) 
   sheet({
     title: t("log_steps"),
     body: el("div", { class: "stack" }, [
+      el("button", { class: "btn soft block", type: "button",
+        onclick: () => { closeSheet(); app.openWalk(); } }, [icon("shoe", 17), t("start_walk")]),
+      el("p", { class: "small muted", style: "margin-top:-4px", text: t("walk_note") }),
+      el("div", { class: "divider" }),
       el("div", { class: "field" }, [
         el("label", { text: t("todays_steps") }),
         input

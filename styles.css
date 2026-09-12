@@ -350,12 +350,12 @@ input[type="time"], input[type="date"], input[type="number"] { min-width: 0; }
 
 .scrim {
   position: fixed; inset: 0; background: rgba(12, 22, 20, .42);
-  backdrop-filter: blur(2px); z-index: 60; animation: fade .2s ease;
+  backdrop-filter: blur(2px); z-index: 80; animation: fade .2s ease;
 }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
 .sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 61;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 81;
   background: var(--paper); border-radius: var(--r-xl) var(--r-xl) 0 0;
   max-height: 92vh; display: flex; flex-direction: column;
   box-shadow: 0 -12px 48px rgba(0,0,0,.22);
@@ -400,7 +400,7 @@ input[type="time"], input[type="date"], input[type="number"] { min-width: 0; }
 
 .toast-host {
   position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + 16px);
-  z-index: 80; display: grid; gap: 8px; justify-items: center; pointer-events: none; padding: 0 16px;
+  z-index: 95; display: grid; gap: 8px; justify-items: center; pointer-events: none; padding: 0 16px;
 }
 .toast {
   background: var(--ink); color: var(--paper); border-radius: 999px;
@@ -443,7 +443,7 @@ input[type="time"], input[type="date"], input[type="number"] { min-width: 0; }
 /* ——— workout player ————————————————————————————————————————— */
 
 .player {
-  position: fixed; inset: 0; z-index: 90; background: var(--paper);
+  position: fixed; inset: 0; z-index: 70; background: var(--paper);
   display: flex; flex-direction: column; animation: fade .2s ease;
 }
 .player-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 8px; gap: 10px; }
@@ -460,6 +460,36 @@ input[type="time"], input[type="date"], input[type="number"] { min-width: 0; }
 .player.resting .player-timer { color: var(--amber); }
 .player-progress { height: 4px; background: var(--surface-3); border-radius: 99px; overflow: hidden; margin: 0 18px; }
 .player-progress > i { display: block; height: 100%; background: var(--accent); transition: width .3s linear; }
+
+/* ——— walk mode ————————————————————————————————————————————— */
+
+.walk-count {
+  font-size: clamp(64px, 20vw, 92px);
+  font-weight: 740;
+  letter-spacing: -.05em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.walk .player-body { gap: 12px; }
+.walk-stats {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+  margin-top: 8px;
+}
+.walk-stat {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  padding: 11px 8px;
+  display: grid;
+  gap: 3px;
+  box-shadow: var(--shadow-1);
+}
+.walk-stat .k { font-size: 11px; color: var(--ink-3); letter-spacing: .02em; }
+.walk-stat .v { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
 
 /* ——— misc ————————————————————————————————————————————————— */
 

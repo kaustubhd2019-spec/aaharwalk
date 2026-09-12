@@ -15,7 +15,8 @@ const SHELL = [
   "./src/engine/session.js", "./src/engine/steps-import.js",
   "./src/ui/components.js", "./src/ui/onboarding.js", "./src/ui/home.js",
   "./src/ui/food.js", "./src/ui/activity.js", "./src/ui/plan.js",
-  "./src/ui/profile.js", "./src/ui/workout.js",
+  "./src/ui/profile.js", "./src/ui/workout.js", "./src/ui/walk.js",
+  "./src/engine/pedometer.js",
   "./assets/icon.svg", "./assets/icon-192.png", "./assets/icon-512.png",
   "./assets/maskable-512.png", "./assets/apple-touch-icon.png"
 ];

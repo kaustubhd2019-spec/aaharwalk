@@ -11,6 +11,7 @@ import { renderActivity, openWaterSheet, openStepsSheet, openWeightSheet } from 
 import { renderPlan } from "./ui/plan.js";
 import { renderProfile } from "./ui/profile.js";
 import { openWorkoutPlayer } from "./ui/workout.js";
+import { openWalkMode } from "./ui/walk.js";
 import { loadDemoData } from "./data/demo.js";
 import { sharedStepText, parseSteps, clearSharedParams } from "./engine/steps-import.js";
 import { icon, closeSheet, toast } from "./ui/components.js";
@@ -41,7 +42,8 @@ export const app = {
   openWater() { openWaterSheet(app); },
   openSteps(options) { openStepsSheet(app, options); },
   openWeight() { openWeightSheet(app); },
-  openWorkout() { openWorkoutPlayer(app); }
+  openWorkout() { openWorkoutPlayer(app); },
+  openWalk() { openWalkMode(app); }
 };
 
 function render() {
