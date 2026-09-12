@@ -1,0 +1,60 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.aaharwalk.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.aaharwalk.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Debug-signed so `assembleRelease` works out of the box. Swap in your
+            // own keystore before publishing anywhere.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The web app is the single source of truth. It is copied in at build time
+    // rather than duplicated inside the Android project.
+    sourceSets {
+        main {
+            assets.srcDirs += [file("$projectDir/build/webapp")]
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.11.0"
+}
+
+/* Copy the PWA into assets/www so the WebView can serve it locally. */
+tasks.register("copyWebApp", Copy) {
+    from(rootProject.projectDir.parentFile) {
+        include "index.html"
+        include "styles.css"
+        include "pwa.js"
+        include "sw.js"
+        include "manifest.webmanifest"
+        include "src/**"
+        include "assets/**"
+    }
+    into file("$projectDir/build/webapp/www")
+}
+
+tasks.named("preBuild") {
+    dependsOn "copyWebApp"
+}

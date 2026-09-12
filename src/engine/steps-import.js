@@ -14,6 +14,12 @@
 import { latinDigits } from "../core/util.js";
 
 export const STEP_SOURCES = {
+  phone_native: {
+    en: "This phone, all day", mr: "हाच फोन, दिवसभर",
+    nativeOnly: true,
+    howEn: "Your phone's own step counter keeps running with the screen off, so today's total stays up to date on its own.",
+    howMr: "फोनचा स्वतःचा स्टेप काउंटर स्क्रीन बंद असतानाही चालू राहतो, त्यामुळे आजचा आकडा आपोआप अद्ययावत राहतो."
+  },
   manual: { en: "Type it myself", mr: "स्वतः लिहितो" },
   stepsetgo: {
     en: "Step Set Go", mr: "Step Set Go",
@@ -36,6 +42,13 @@ export const STEP_SOURCES = {
     howMr: "फोनच्या हेल्थ अ‍ॅपमधून आजची पावलं कॉपी करून इथे पेस्ट करा."
   }
 };
+
+/** Sources worth offering here — the native one only inside the Android app. */
+export function availableSources(hasNative) {
+  return Object.fromEntries(
+    Object.entries(STEP_SOURCES).filter(([, meta]) => hasNative || !meta.nativeOnly)
+  );
+}
 
 /* Numbers that are plainly not a step count (dates, times, calories, km). */
 const NOISE_PATTERN = /\b(kcal|cal|calories|km|kms|kilometre|kilometer|mile|miles|min|mins|hour|hrs|bpm|kg|%|rs|₹|coin|coins)\b/i;

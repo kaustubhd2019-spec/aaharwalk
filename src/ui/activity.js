@@ -7,7 +7,8 @@ import { currentTargets, recentDays, weightHistory } from "../engine/session.js"
 import { weightTrend } from "../engine/targets.js";
 import { weightNote } from "../engine/coach.js";
 import { card, cardHead, stat, sheet, closeSheet, toast, icon, barChart, lineChart, metric, emptyState, chipRow } from "./components.js";
-import { STEP_SOURCES, parseSteps } from "../engine/steps-import.js";
+import { STEP_SOURCES, availableSources, parseSteps } from "../engine/steps-import.js";
+import { hasNativeCounter, nativePermitted, requestNativePermission, readNativeToday } from "../engine/native-bridge.js";
 
 export function renderActivity(root, app) {
   const date = todayISO();
@@ -210,7 +211,7 @@ export function openStepsSheet(app, { prefill = null, sharedText = null } = {}) 
     const meta = STEP_SOURCES[source] || STEP_SOURCES.manual;
     howNote.textContent = lang() === "mr" ? (meta.howMr || "") : (meta.howEn || "");
     howNote.hidden = !howNote.textContent;
-    pasteField.hidden = source === "manual";
+    pasteField.hidden = source === "manual" || source === "phone_native";
   };
   paintHow();
 
@@ -236,11 +237,25 @@ export function openStepsSheet(app, { prefill = null, sharedText = null } = {}) 
       }))),
       el("div", { class: "field" }, [
         el("label", { text: t("step_source") }),
-        chipRow(Object.entries(STEP_SOURCES).map(([value, meta]) => ({ value, label: meta[lang()] || meta.en })), {
+        chipRow(Object.entries(availableSources(hasNativeCounter())).map(([value, meta]) => ({ value, label: meta[lang()] || meta.en })), {
           selected: source, size: "sm",
-          onSelect: value => {
+          onSelect: async value => {
             source = value;
+            if (value === "phone_native" && !nativePermitted()) {
+              const granted = await requestNativePermission();
+              if (!granted) {
+                toast(t("native_denied"), 4200);
+                source = "manual";
+                update(s => { s.settings.stepSource = "manual"; });
+                paintHow();
+                return;
+              }
+            }
             update(s => { s.settings.stepSource = value; });
+            if (value === "phone_native") {
+              const live = readNativeToday();
+              if (live != null && live >= 0) input.value = String(live);
+            }
             paintHow();
           }
         }),

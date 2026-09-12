@@ -2,7 +2,7 @@
 
 import { el, todayISO, minutesNow } from "./core/util.js";
 import { t, lang, setLang } from "./core/i18n.js";
-import { getState, subscribe, getDay } from "./core/store.js";
+import { getState, subscribe, getDay, updateDay, update } from "./core/store.js";
 import { refreshFoodIndex, currentTargets } from "./engine/session.js";
 import { renderOnboarding } from "./ui/onboarding.js";
 import { renderHome } from "./ui/home.js";
@@ -14,6 +14,7 @@ import { openWorkoutPlayer } from "./ui/workout.js";
 import { openWalkMode } from "./ui/walk.js";
 import { loadDemoData } from "./data/demo.js";
 import { sharedStepText, parseSteps, clearSharedParams } from "./engine/steps-import.js";
+import { hasNativeCounter, nativePermitted, readNativeToday, onNativeSteps } from "./engine/native-bridge.js";
 import { icon, closeSheet, toast } from "./ui/components.js";
 
 const ROUTES = {
@@ -134,6 +135,40 @@ if (new URLSearchParams(location.search).get("demo") === "1" && !getState().prof
 window.__AW_BOOTED = true;
 render();
 startWaterReminders();
+
+/* Inside the Android app the phone counts steps all day on its own. Adopt that
+   as the source of truth and keep today's total in step with it. */
+function startNativeStepSync() {
+  if (!hasNativeCounter()) return;
+
+  const applyTotal = value => {
+    if (!Number.isFinite(value) || value < 0) return;
+    const state = getState();
+    if (!state.profile) return;
+    if (state.settings.stepSource !== "phone_native") return;
+    const date = todayISO();
+    if ((getDay(date).steps || 0) === value) return;
+    updateDay(date, day => {
+      day.steps = value;
+      day.stepsSource = "phone_native";
+    });
+    render();
+  };
+
+  // First run inside the APK, with permission already granted: take it over.
+  if (nativePermitted() && getState().settings.stepSource === "manual") {
+    update(s => { s.settings.stepSource = "phone_native"; });
+  }
+
+  onNativeSteps(applyTotal);
+  applyTotal(readNativeToday());
+  setInterval(() => applyTotal(readNativeToday()), 60000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") applyTotal(readNativeToday());
+  });
+}
+
+startNativeStepSync();
 
 /* Arrived via the Android share sheet (Step Set Go, Google Fit, …)? */
 (function handleSharedSteps() {

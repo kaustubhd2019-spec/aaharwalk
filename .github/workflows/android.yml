@@ -1,0 +1,71 @@
+name: Build Android APK
+
+# Run it yourself from the Actions tab, or push a v* tag to get a release.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+    branches: ["**"]
+    paths:
+      - "android/**"
+      - "src/**"
+      - "assets/**"
+      - "index.html"
+      - "styles.css"
+      - "sw.js"
+      - "pwa.js"
+      - "manifest.webmanifest"
+      - ".github/workflows/android.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the web app's engine tests first
+        run: node tests/run.mjs
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # GitHub's runners already have the Android SDK installed.
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the debug APK
+        working-directory: android
+        run: gradle --no-daemon assembleDebug
+
+      - name: Name the APK
+        id: apk
+        run: |
+          src=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          out="AaharWalk-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA::7}.apk"
+          cp "$src" "$out"
+          echo "path=$out" >> "$GITHUB_OUTPUT"
+          ls -lh "$out"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AaharWalk-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Attach the APK to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.apk.outputs.path }}
+          body: |
+            Sideload this APK on Android: open it and allow installing from this source.
+            It is debug-signed, so Play Protect may warn the first time.

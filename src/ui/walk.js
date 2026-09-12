@@ -14,6 +14,7 @@ import {
   secureEnough, acquireWakeLock, distanceKm, walkCalories, SENSITIVITY
 } from "../engine/pedometer.js";
 import { currentTargets } from "../engine/session.js";
+import { nativeIsSource } from "../engine/native-bridge.js";
 import { icon, toast, sheet, closeSheet, chipRow, metric } from "./components.js";
 
 export function openWalkMode(app) {
@@ -198,12 +199,22 @@ export function openWalkMode(app) {
     document.body.style.overflow = "";
   }
 
+  /**
+   * Inside the Android app the phone's own counter already includes this walk,
+   * so adding it again would double count. There we only record that the walk
+   * happened; the day's total stays owned by the hardware counter.
+   */
+  function nativeOwnsTotal() {
+    return nativeIsSource(getState().settings);
+  }
+
   function saveSteps(counted) {
     const date = todayISO();
     updateDay(date, day => {
+      day.walkedSteps = (day.walkedSteps || 0) + counted;
+      if (nativeOwnsTotal()) return;
       day.steps = Math.max(0, (day.steps || 0) + counted);
       day.stepsSource = "walk";
-      day.walkedSteps = (day.walkedSteps || 0) + counted;
     });
   }
 
@@ -230,7 +241,8 @@ export function openWalkMode(app) {
         el("div", { style: "font-size:30px;font-weight:720;letter-spacing:-.03em", text: `${fmt(counted)} ${t("steps").toLowerCase()}` }),
         el("p", { class: "small muted", text: `${round(distanceKm(counted, profile.heightCm), 2)} km · ≈ ${walkCalories(counted, profile.weightKg)} kcal · ${Math.round(totalMs() / 60000)} min` }),
         el("div", { class: "divider" }),
-        el("p", { class: "small", text: `${t("todays_steps")}: ${fmt(day.steps || counted)}` })
+        el("p", { class: "small", text: `${t("todays_steps")}: ${fmt(day.steps || counted)}` }),
+        nativeOwnsTotal() ? el("p", { class: "tiny muted", text: t("native_already_counted") }) : null
       ]),
       footer: [el("button", { class: "btn block", type: "button", text: t("done"), onclick: () => { closeSheet(); app.refresh(); } })]
     });

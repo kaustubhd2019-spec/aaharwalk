@@ -52,9 +52,14 @@ specific about today rather than cheering. Never any shaming language.
 
 ---
 
-## Steps: three ways in
+## Steps: four ways in
 
-**1. The app counts them itself.** Tap **Count my walk** and the phone's accelerometer
+**0. Inside the Android app, the phone counts them all day.** The APK reads Android's
+hardware step counter, which runs in the OS with the screen off — no app needs to be
+open. This is the only option here that covers a whole day automatically, and it is the
+main reason to install the APK rather than the PWA.
+
+**1. In the browser, the app counts a walk itself.** Tap **Count my walk** and the phone's accelerometer
 counts your steps live — distance, time and calories alongside, with progress toward
 today's goal. It takes a screen wake lock, so you can pocket the phone and keep walking.
 There is a sensitivity setting if it over- or under-counts for the way you carry it.
@@ -88,6 +93,19 @@ node tests/run.mjs
 workout generation, step import and the pedometer (against synthetic accelerometer
 traces at several walking cadences). No dependencies.
 
+## Android app (APK)
+
+There is a native wrapper in [`android/`](android/) — the same web app in a WebView,
+which buys one thing the browser cannot give: **Android's hardware step counter**,
+which keeps counting with the screen off and the app closed. Inside the APK the app
+uses it as the source of truth for today's steps, and Walk mode stops adding its own
+count so nothing is double counted. The manifest requests **no internet permission at
+all**.
+
+To get an APK without installing any tooling: **Actions → Build Android APK → Run
+workflow**, then download the artifact. Details and local build instructions are in
+[`android/README.md`](android/README.md).
+
 ## Running it
 
 Because the app is built from ES modules, it needs to be served over http — browsers block
@@ -113,6 +131,7 @@ Plain ES modules, no build step, no dependencies.
 
 ```
 index.html · styles.css · sw.js · pwa.js · manifest.webmanifest
+android/  · native wrapper (see android/README.md)
 src/
   core/     util.js  store.js (localStorage + migrations)  i18n.js (en/mr)
   data/     foods.js (240 foods)   units.js   exercises.js (53 moves)
@@ -126,6 +145,7 @@ src/
             session.js      assembles "what does today look like"
             steps-import.js reading a step count out of shared or pasted text
             pedometer.js    counting steps from the accelerometer
+            native-bridge.js the Android app's hardware step counter, when present
   ui/       components.js  onboarding.js  home.js  food.js
             activity.js  plan.js  profile.js  workout.js  walk.js
   main.js   routing and the app shell

@@ -80,6 +80,10 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+/* An author `display` rule beats the UA sheet's [hidden] rule, so anything we
+   hide with the attribute needs this to actually disappear. */
+[hidden] { display: none !important; }
+
 html, body { height: 100%; }
 
 body {
