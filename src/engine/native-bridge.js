@@ -77,6 +77,39 @@ export function readNativeToday() {
   }
 }
 
+/* ——— saving files out of the app ————————————————————————— */
+
+/** The Android file bridge, or null in a plain browser. */
+function fileBridge() {
+  if (typeof window === "undefined" || !window.AndroidFiles) return null;
+  try {
+    return window.AndroidFiles.isAvailable() ? window.AndroidFiles : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+export function hasFileBridge() {
+  return fileBridge() !== null;
+}
+
+/**
+ * Write a text file to the phone's Downloads folder.
+ * A WebView silently ignores an <a download> link, so inside the Android app
+ * this is the only way a backup actually reaches the filesystem.
+ * @returns {string|null} where it was saved, or null if unavailable/failed.
+ */
+export function saveTextFile(filename, text) {
+  const api = fileBridge();
+  if (!api) return null;
+  try {
+    const where = api.saveToDownloads(filename, text);
+    return where ? String(where) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
 /** Subscribe to live updates pushed by the Android side. */
 export function onNativeSteps(callback) {
   if (typeof window === "undefined") return () => {};

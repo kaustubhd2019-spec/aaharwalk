@@ -27,9 +27,28 @@ today's total, and Walk mode stops adding its own count so nothing is counted tw
 
 Pushing a `v*` tag builds it and attaches the APK to a GitHub release instead.
 
-The APK is **debug-signed**, so Play Protect may warn the first time you install it.
-That is expected for a sideloaded build. To sign it yourself, create a keystore and
-replace `signingConfig signingConfigs.debug` in `app/build.gradle`.
+Play Protect may warn the first time you install it. That is expected for a
+sideloaded build that is not from the Play Store.
+
+### About the signing key
+
+`app/sideload.keystore` is checked into the repository and every build is signed
+with it. That is deliberate: Android refuses to install an update signed with a
+different key than the installed app, and Gradle's default debug keystore is
+generated fresh on each CI machine — so each new APK failed with **"App not
+installed"** until the old one was uninstalled first. With a fixed key, updates
+install straight over the top and your data is kept.
+
+This key is a throwaway. It is public, it protects nothing, and it must be
+replaced with your own before distributing the app anywhere real. To do that,
+create your own keystore and point `signingConfigs.sideload` at it.
+
+### Backup and restore inside the app
+
+A WebView ignores an `<a download>` link and gives no error, so the web build's
+backup button would silently do nothing in the APK. `FileBridge.java` writes the
+file to the phone's Downloads folder instead, and `onShowFileChooser` in
+`MainActivity` is what makes "Restore a backup" able to open a file picker.
 
 ## Building it locally
 
@@ -48,8 +67,9 @@ Android Studio also works — it will offer to add the Gradle wrapper.
 ```
 app/src/main/
   java/com/aaharwalk/app/
-    MainActivity.java   WebView host, asset loader, share-intent handling
+    MainActivity.java   WebView host, asset loader, share intents, file picker
     StepBridge.java     hardware step counter → window.AndroidSteps
+    FileBridge.java     writing a backup to Downloads → window.AndroidFiles
   AndroidManifest.xml   no INTERNET permission; ACTIVITY_RECOGNITION for steps
   res/                  launcher icons, light and dark themes
 ```

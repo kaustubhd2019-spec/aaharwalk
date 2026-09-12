@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -31,9 +33,11 @@ public class MainActivity extends Activity {
     private static final String START_PAGE = ORIGIN + "/assets/www/index.html";
 
     static final int REQ_ACTIVITY_RECOGNITION = 4011;
+    private static final int REQ_FILE_CHOOSER = 4012;
 
     private WebView webView;
     private StepBridge stepBridge;
+    private ValueCallback<Uri[]> pendingFileChooser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,8 +93,29 @@ public class MainActivity extends Activity {
             });
         }
 
+        // Without a chrome client, <input type="file"> does nothing in a WebView,
+        // which would leave "Restore a backup" silently dead.
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
+                                             FileChooserParams params) {
+                if (pendingFileChooser != null) {
+                    pendingFileChooser.onReceiveValue(null);
+                }
+                pendingFileChooser = callback;
+                try {
+                    startActivityForResult(params.createIntent(), REQ_FILE_CHOOSER);
+                } catch (Exception err) {
+                    pendingFileChooser = null;
+                    return false;
+                }
+                return true;
+            }
+        });
+
         stepBridge = new StepBridge(this, webView);
         webView.addJavascriptInterface(stepBridge, "AndroidSteps");
+        webView.addJavascriptInterface(new FileBridge(this), "AndroidFiles");
 
         webView.loadUrl(START_PAGE + sharedQuery(getIntent()));
     }
@@ -143,6 +168,20 @@ public class MainActivity extends Activity {
             stepBridge.stop();
         }
         super.onStop();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQ_FILE_CHOOSER || pendingFileChooser == null) {
+            return;
+        }
+        Uri[] picked = null;
+        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+            picked = new Uri[]{data.getData()};
+        }
+        pendingFileChooser.onReceiveValue(picked);
+        pendingFileChooser = null;
     }
 
     @Override

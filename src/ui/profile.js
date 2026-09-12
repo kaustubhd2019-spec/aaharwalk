@@ -7,6 +7,7 @@ import { currentTargets } from "../engine/session.js";
 import { ACTIVITY_LEVELS, GOALS, bmiBand } from "../engine/targets.js";
 import { EQUIPMENT } from "../data/exercises.js";
 import { loadDemoData } from "../data/demo.js";
+import { saveTextFile, hasFileBridge } from "../engine/native-bridge.js";
 import { card, cardHead, sheet, closeSheet, toast, icon, chipRow } from "./components.js";
 
 export function renderProfile(root, app) {
@@ -148,9 +149,24 @@ export function renderProfile(root, app) {
   /* —— handlers —— */
 
   function doExport() {
-    const blob = new Blob([exportJSON()], { type: "application/json" });
+    const json = exportJSON();
+    const filename = `aaharwalk-backup-${todayISO()}.json`;
+
+    // Inside the Android app, write the file directly — a WebView ignores an
+    // <a download> link entirely and the backup would appear to do nothing.
+    const savedTo = saveTextFile(filename, json);
+    if (savedTo) {
+      toast(`${t("saved")} → ${savedTo}`, 5000);
+      return;
+    }
+    if (hasFileBridge()) {
+      toast(lang() === "mr" ? "फाईल जतन करता आली नाही." : "Could not write the backup file.", 4000);
+      return;
+    }
+
+    const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = el("a", { href: url, download: `aaharwalk-backup-${todayISO()}.json` });
+    const a = el("a", { href: url, download: filename });
     document.body.append(a);
     a.click();
     a.remove();
