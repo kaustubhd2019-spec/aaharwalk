@@ -4,7 +4,12 @@
 
   var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 
-  if ("serviceWorker" in navigator && window.isSecureContext) {
+  // Inside the Android app every file already ships in the APK, and the shell
+  // list would not resolve against the asset loader, so there is nothing for a
+  // service worker to do.
+  var inAndroidApp = typeof window.AndroidSteps !== "undefined";
+
+  if (!inAndroidApp && "serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js").catch(function () { /* offline support unavailable */ });
     });
@@ -33,6 +38,7 @@
   });
 
   document.addEventListener("DOMContentLoaded", function () {
+    if (inAndroidApp) { return; }   // already a real installed app
     nodes();
     var dismiss = document.getElementById("installDismiss");
     if (dismiss) {

@@ -53,6 +53,20 @@ jobs:
           echo "path=$out" >> "$GITHUB_OUTPUT"
           ls -lh "$out"
 
+      - name: Verify what is inside the APK
+        run: |
+          APK="${{ steps.apk.outputs.path }}"
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | tail -1)
+          echo "--- identity, permissions, features ---"
+          "$AAPT" dump badging "$APK" | grep -E "package:|application-label:|uses-permission|uses-feature|sdkVersion|targetSdkVersion" || true
+          echo "--- the web app must be bundled ---"
+          unzip -l "$APK" | grep -E "assets/www/(index.html|styles.css|src/main.js|src/engine/(parser|pedometer|native-bridge).js)" || {
+            echo "::error::the web app is missing from the APK"; exit 1; }
+          echo "--- counts ---"
+          echo "food db:      $(unzip -l "$APK" | grep -c 'assets/www/src/data/foods.js') file"
+          echo "js modules:   $(unzip -l "$APK" | grep -c 'assets/www/src/.*\.js')"
+          echo "size:         $(du -h "$APK" | cut -f1)"
+
       - name: Upload the APK
         uses: actions/upload-artifact@v4
         with:
