@@ -10,10 +10,12 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
+import android.os.SystemClock;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
@@ -148,6 +150,25 @@ public class StepBridge implements SensorEventListener {
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
     }
 
+    private static long millisSinceMidnight() {
+        Calendar calendar = Calendar.getInstance();
+        long now = calendar.getTimeInMillis();
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return now - calendar.getTimeInMillis();
+    }
+
+    /**
+     * If the phone booted after midnight then every step the hardware has
+     * counted since boot happened today, so we can credit them all rather than
+     * starting the user at zero on the day they install the app.
+     */
+    private static boolean bootedToday() {
+        return SystemClock.elapsedRealtime() <= millisSinceMidnight();
+    }
+
     private synchronized int todaySteps() {
         if (latestRaw < 0) {
             return -1;
@@ -158,13 +179,19 @@ public class StepBridge implements SensorEventListener {
         SharedPreferences.Editor editor = prefs.edit();
 
         if (!today.equals(storedDate)) {
-            // First run, or a new day has started: today begins at zero from here.
+            // First run, or a new day has started.
+            long baseline = latestRaw;
+            int startingTotal = 0;
+            if (storedDate == null && bootedToday()) {
+                baseline = 0;
+                startingTotal = (int) latestRaw;
+            }
             editor.putString(KEY_DATE, today)
-                    .putLong(KEY_RAW, latestRaw)
+                    .putLong(KEY_RAW, baseline)
                     .putInt(KEY_CARRIED, 0)
-                    .putInt(KEY_LAST_TOTAL, 0)
+                    .putInt(KEY_LAST_TOTAL, startingTotal)
                     .apply();
-            return 0;
+            return startingTotal;
         }
 
         long baseline = prefs.getLong(KEY_RAW, -1);

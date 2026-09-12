@@ -8,7 +8,7 @@ import { weightTrend } from "../engine/targets.js";
 import { weightNote } from "../engine/coach.js";
 import { card, cardHead, stat, sheet, closeSheet, toast, icon, barChart, lineChart, metric, emptyState, chipRow } from "./components.js";
 import { STEP_SOURCES, availableSources, parseSteps } from "../engine/steps-import.js";
-import { hasNativeCounter, nativePermitted, requestNativePermission, readNativeToday } from "../engine/native-bridge.js";
+import { hasNativeCounter, nativePermitted, requestNativePermission, readNativeToday, nativeStatus } from "../engine/native-bridge.js";
 
 export function renderActivity(root, app) {
   const date = todayISO();
@@ -48,10 +48,12 @@ export function renderActivity(root, app) {
       [icon("shoe", 17), t("start_walk")]),
     el("div", { style: "height:16px" }),
     el("div", { class: "card-title", style: "margin-bottom:8px", text: t("last_7_days") }),
-    barChart(
-      lastNDays(7).map((iso, i) => ({ label: weekdayShort(iso, localeCode()), value: stepValues[i] })),
-      { target: targets.steps }
-    ),
+    stepValues.some(v => v > 0)
+      ? barChart(
+          lastNDays(7).map((iso, i) => ({ label: weekdayShort(iso, localeCode()), value: stepValues[i] })),
+          { target: targets.steps }
+        )
+      : emptyState(t("no_steps_history")),
     el("div", { class: "row between", style: "margin-top:10px" }, [
       el("span", { class: "small muted", text: t("weekly_average") }),
       el("span", { class: "small", style: "font-weight:620", text: fmt(Math.round(weekAvg)) })
@@ -63,8 +65,13 @@ export function renderActivity(root, app) {
 
   /* —— water —— */
   screen.append(card([
-    cardHead(t("water"), el("span", { class: "small muted", text: `${round((day.waterMl || 0) / 1000, 2)} / ${round(targets.waterMl / 1000, 2)} L` })),
-    metric({ name: t("water"), value: day.waterMl || 0, target: targets.waterMl, unit: "L", tone: "amber", format: v => round(v / 1000, 2) }),
+    cardHead(t("water"), el("span", {}, [
+      el("strong", { style: "font-size:16px", text: `${round((day.waterMl || 0) / 1000, 2)} L` }),
+      el("span", { class: "metric-val", text: ` / ${round(targets.waterMl / 1000, 2)} L` })
+    ])),
+    el("div", { class: "bar amber" }, [
+      el("i", { style: `width:${Math.min(100, ((day.waterMl || 0) / targets.waterMl) * 100)}%` })
+    ]),
     el("div", { style: "height:14px" }),
     el("div", { class: "chips" }, [250, 500, 750, 1000].map(ml => el("button", {
       class: "chip", type: "button", text: `+${ml >= 1000 ? "1 L" : `${ml} ml`}`,
@@ -206,12 +213,32 @@ export function openStepsSheet(app, { prefill = null, sharedText = null } = {}) 
     pasteNote
   ]);
 
+  const liveNote = el("p", { class: "small", style: "font-weight:560" });
+  let liveTimer = null;
+
+  const paintLive = () => {
+    if (source !== "phone_native") { liveNote.hidden = true; return; }
+    liveNote.hidden = false;
+    const status = nativeStatus();
+    if (status.state === "ok") {
+      liveNote.textContent = `${t("phone_counter_now")}: ${fmt(status.steps)}`;
+      liveNote.style.color = "var(--leaf)";
+    } else if (status.state === "waiting") {
+      liveNote.textContent = t("phone_counter_waiting");
+      liveNote.style.color = "var(--amber)";
+    } else {
+      liveNote.textContent = t("phone_counter_unavailable");
+      liveNote.style.color = "var(--ink-3)";
+    }
+  };
+
   const howNote = el("p", { class: "small muted" });
   const paintHow = () => {
     const meta = STEP_SOURCES[source] || STEP_SOURCES.manual;
     howNote.textContent = lang() === "mr" ? (meta.howMr || "") : (meta.howEn || "");
     howNote.hidden = !howNote.textContent;
     pasteField.hidden = source === "manual" || source === "phone_native";
+    paintLive();
   };
   paintHow();
 
@@ -220,8 +247,11 @@ export function openStepsSheet(app, { prefill = null, sharedText = null } = {}) 
     pasteBox.value = sharedText;
   }
 
+  liveTimer = setInterval(paintLive, 1500);
+
   sheet({
     title: t("log_steps"),
+    onClose: () => clearInterval(liveTimer),
     body: el("div", { class: "stack" }, [
       el("button", { class: "btn soft block", type: "button",
         onclick: () => { closeSheet(); app.openWalk(); } }, [icon("shoe", 17), t("start_walk")]),
@@ -259,7 +289,8 @@ export function openStepsSheet(app, { prefill = null, sharedText = null } = {}) 
             paintHow();
           }
         }),
-        howNote
+        howNote,
+        liveNote
       ]),
       pasteField,
       el("p", { class: "small muted", text: lang() === "mr"

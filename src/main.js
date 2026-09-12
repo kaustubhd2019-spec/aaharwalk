@@ -14,7 +14,7 @@ import { openWorkoutPlayer } from "./ui/workout.js";
 import { openWalkMode } from "./ui/walk.js";
 import { loadDemoData } from "./data/demo.js";
 import { sharedStepText, parseSteps, clearSharedParams } from "./engine/steps-import.js";
-import { hasNativeCounter, nativePermitted, readNativeToday, onNativeSteps } from "./engine/native-bridge.js";
+import { hasNativeCounter, nativePermitted, readNativeToday, onNativeSteps, dayStepTotal } from "./engine/native-bridge.js";
 import { icon, closeSheet, toast } from "./ui/components.js";
 
 const ROUTES = {
@@ -147,9 +147,12 @@ function startNativeStepSync() {
     if (!state.profile) return;
     if (state.settings.stepSource !== "phone_native") return;
     const date = todayISO();
-    if ((getDay(date).steps || 0) === value) return;
+    // Never below what Walk mode counted: a sensor that under-reports (or has
+    // only just started) must not wipe out steps the user really took.
+    const total = dayStepTotal({ phoneTotal: value, walked: getDay(date).walkedSteps });
+    if ((getDay(date).steps || 0) === total) return;
     updateDay(date, day => {
-      day.steps = value;
+      day.steps = total;
       day.stepsSource = "phone_native";
     });
     render();

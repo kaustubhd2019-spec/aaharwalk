@@ -85,7 +85,38 @@ export function onNativeSteps(callback) {
   return () => window.removeEventListener(EVENT_STEPS, handler);
 }
 
-/** Whether the phone's own counter is the authority for today's total. */
+/**
+ * Whether the phone's own counter is the authority for today's total.
+ *
+ * Permission alone is not enough. A granted permission with a sensor that has
+ * not reported yet used to hand ownership to a counter reading nothing, which
+ * silently threw away steps counted in Walk mode. It has to be really counting.
+ */
 export function nativeIsSource(settings) {
-  return settings && settings.stepSource === "phone_native" && hasNativeCounter() && nativePermitted();
+  if (!settings || settings.stepSource !== "phone_native") return false;
+  if (!hasNativeCounter() || !nativePermitted()) return false;
+  const value = readNativeToday();
+  return Number.isFinite(value) && value >= 0;
+}
+
+/**
+ * The day's step total from every source we have.
+ *
+ * Walk-mode steps are already inside the phone's all-day total, so these
+ * combine by taking the largest — never by adding, which would double count,
+ * and never by replacing, which is how a silent sensor used to erase a walk.
+ */
+export function dayStepTotal({ phoneTotal = null, walked = 0, entered = 0 } = {}) {
+  const candidates = [Number(walked) || 0, Number(entered) || 0];
+  if (Number.isFinite(phoneTotal) && phoneTotal >= 0) candidates.push(phoneTotal);
+  return Math.max(0, ...candidates);
+}
+
+/** What the phone's counter says right now, for showing the user. */
+export function nativeStatus() {
+  if (!hasNativeCounter()) return { state: "unavailable" };
+  if (!nativePermitted()) return { state: "needs-permission" };
+  const value = readNativeToday();
+  if (!Number.isFinite(value) || value < 0) return { state: "waiting" };
+  return { state: "ok", steps: value };
 }

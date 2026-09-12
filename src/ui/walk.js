@@ -14,7 +14,7 @@ import {
   secureEnough, acquireWakeLock, distanceKm, walkCalories, SENSITIVITY
 } from "../engine/pedometer.js";
 import { currentTargets } from "../engine/session.js";
-import { nativeIsSource } from "../engine/native-bridge.js";
+import { nativeIsSource, dayStepTotal, readNativeToday } from "../engine/native-bridge.js";
 import { icon, toast, sheet, closeSheet, chipRow, metric } from "./components.js";
 
 export function openWalkMode(app) {
@@ -210,9 +210,19 @@ export function openWalkMode(app) {
 
   function saveSteps(counted) {
     const date = todayISO();
+    const ownedByPhone = nativeOwnsTotal();
     updateDay(date, day => {
       day.walkedSteps = (day.walkedSteps || 0) + counted;
-      if (nativeOwnsTotal()) return;
+      if (ownedByPhone) {
+        // The phone's counter already includes this walk, so don't add it again —
+        // but the day's total must never sit below what we actually counted.
+        day.steps = dayStepTotal({
+          phoneTotal: readNativeToday(),
+          walked: day.walkedSteps,
+          entered: day.steps
+        });
+        return;
+      }
       day.steps = Math.max(0, (day.steps || 0) + counted);
       day.stepsSource = "walk";
     });

@@ -7,6 +7,7 @@ import { planDay, suggestNext, nextSlotByClock, describeMeal } from "../src/engi
 import { buildWorkout } from "../src/engine/workouts.js";
 import { parseSteps } from "../src/engine/steps-import.js";
 import { createDetector, strideMetres, distanceKm, walkCalories } from "../src/engine/pedometer.js";
+import { dayStepTotal, nativeIsSource, hasNativeCounter } from "../src/engine/native-bridge.js";
 import { FOODS, FOOD_BY_ID, AMBIGUOUS } from "../src/data/foods.js";
 import { MEAL_IDEAS } from "../src/data/mealIdeas.js";
 import { unitsFor, gramsFor } from "../src/data/units.js";
@@ -437,6 +438,38 @@ test("distance and calories follow from steps", () => {
   near(distanceKm(1000, 173), 0.716, 0.01, "1000 steps");
   ok(walkCalories(1000, 82) > 0 && walkCalories(1000, 82) < 60, "conservative burn");
   ok(walkCalories(1000, 90) > walkCalories(1000, 60), "heavier burns more");
+});
+
+/* ——— combining step sources ————————————————————————————————— */
+
+test("a walk is never lost when the phone's counter says nothing", () => {
+  // The bug: permission granted, sensor silent, walk steps thrown away.
+  eq(dayStepTotal({ phoneTotal: -1, walked: 2430, entered: 0 }), 2430);
+  eq(dayStepTotal({ phoneTotal: null, walked: 2430, entered: 0 }), 2430);
+});
+
+test("a walk already inside the phone's total is not counted twice", () => {
+  eq(dayStepTotal({ phoneTotal: 2430, walked: 2430, entered: 2430 }), 2430);
+  eq(dayStepTotal({ phoneTotal: 5000, walked: 2430, entered: 2430 }), 5000);
+});
+
+test("a lagging sensor reading cannot erase counted steps", () => {
+  eq(dayStepTotal({ phoneTotal: 40, walked: 2430, entered: 2430 }), 2430);
+  eq(dayStepTotal({ phoneTotal: 0, walked: 900, entered: 900 }), 900);
+});
+
+test("step totals never go negative or NaN", () => {
+  eq(dayStepTotal({}), 0);
+  eq(dayStepTotal({ phoneTotal: -5, walked: 0, entered: 0 }), 0);
+  eq(dayStepTotal({ phoneTotal: NaN, walked: 120 }), 120);
+});
+
+test("the phone only owns the day's total when it is really counting", () => {
+  // No Android bridge at all (a plain browser): never the source.
+  eq(hasNativeCounter(), false);
+  eq(nativeIsSource({ stepSource: "phone_native" }), false);
+  eq(nativeIsSource({ stepSource: "manual" }), false);
+  eq(nativeIsSource(null), false);
 });
 
 /* ——— report ————————————————————————————————————————————————— */
