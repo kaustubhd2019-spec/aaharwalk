@@ -22,7 +22,7 @@ function emptyState() {
       lang: "en",
       reminders: { water: true, wakeTime: "07:00", sleepTime: "22:30", everyMinutes: 120 },
       stepSource: "manual",
-      walkSensitivity: "normal"
+      walkCalibration: 1
     },
     meta: { createdAt: new Date().toISOString(), demoLoaded: false, walkedStepsRepaired: false }
   };

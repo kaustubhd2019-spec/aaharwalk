@@ -9,7 +9,7 @@ import { foodById } from "../engine/parser.js";
 import { totalNutrition, displayKcal } from "../engine/nutrition.js";
 import { weeklyReport } from "../engine/coach.js";
 import { qtyLabel, unitLabel } from "../data/units.js";
-import { card, cardHead, stat, icon, toast, barChart, emptyState } from "./components.js";
+import { card, cardHead, stat, icon, toast, barChart, emptyState, foodAvatar } from "./components.js";
 
 export function renderPlan(root, app) {
   const date = todayISO();
@@ -48,6 +48,7 @@ export function renderPlan(root, app) {
         const food = foodById(item.foodId);
         if (!food) continue;
         block.append(el("div", { class: "list-row" }, [
+          foodAvatar(food),
           el("div", { class: "lead" }, [
             el("div", { class: "title", text: nameOf(food) }),
             el("div", { class: "sub", text: `${qtyLabel(item.qty)} ${unitLabel(item.unit, lang(), item.qty)}` })
@@ -108,7 +109,7 @@ export function renderPlan(root, app) {
         label: weekdayShort(iso, localeCode()),
         value: week[i] ? Math.round(totalNutrition(Object.values(week[i].meals || {}).flat()).kcal) : 0
       })),
-      { target: targets.kcal, hitWhen: value => value > 0 && value <= targets.kcal * 1.05 }
+      { target: targets.kcal, color: "var(--m-cal)", hitWhen: value => value > 0 && value <= targets.kcal * 1.05 }
     ),
     firstWeight && lastWeight && firstWeight.date !== lastWeight.date
       ? el("div", { class: "kv", style: "margin-top:14px" }, [

@@ -47,37 +47,96 @@ export function icon(name, size = 22, stroke = 1.7) {
   return svg;
 }
 
-/* ——— progress ring ————————————————————————————————————————— */
+/* ——— activity rings ————————————————————————————————————————
+   One arc per goal, largest outside. Every ring is also named and numbered in
+   the legend beside it, so identity never rests on colour alone. */
 
-export function ring({ value, target, size = 116, stroke = 11, label = "", centerValue = null, tone = "" }) {
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const ratio = target > 0 ? clamp(value / target, 0, 1) : 0;
+export function activityRings(goals, { size = 132, stroke = 9, gap = 4, centre = null } = {}) {
+  const wrap = el("div", { class: "rings", style: `width:${size}px;height:${size}px` });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", size);
+  svg.setAttribute("height", size);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", goals.map(g => `${g.name} ${Math.round(g.value)} of ${Math.round(g.target)}`).join("; "));
 
-  const wrap = el("div", { class: `ring ${tone}`, style: `width:${size}px;height:${size}px` });
-  wrap.innerHTML = `
-    <svg width="${size}" height="${size}">
-      <circle class="track" cx="${size / 2}" cy="${size / 2}" r="${radius}" stroke-width="${stroke}"></circle>
-      <circle class="bar" cx="${size / 2}" cy="${size / 2}" r="${radius}" stroke-width="${stroke}"
-        stroke-dasharray="${circumference}" stroke-dashoffset="${circumference * (1 - ratio)}"></circle>
-    </svg>`;
-  wrap.append(el("div", { class: "ring-center" }, [
-    el("div", { class: "ring-value", text: centerValue ?? fmt(Math.round(value)) }),
-    label ? el("div", { class: "ring-label", text: label }) : null
-  ]));
+  goals.forEach((goal, index) => {
+    const radius = (size - stroke) / 2 - index * (stroke + gap);
+    if (radius <= stroke) return;
+    const circumference = 2 * Math.PI * radius;
+    const ratio = goal.target > 0 ? clamp(goal.value / goal.target, 0, 1) : 0;
+
+    for (const kind of ["ring-track", "ring-arc"]) {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("class", kind);
+      circle.setAttribute("cx", size / 2);
+      circle.setAttribute("cy", size / 2);
+      circle.setAttribute("r", radius);
+      circle.setAttribute("stroke-width", stroke);
+      if (kind === "ring-arc") {
+        circle.setAttribute("stroke", goal.color);
+        circle.setAttribute("stroke-dasharray", circumference);
+        circle.setAttribute("stroke-dashoffset", circumference);
+        requestAnimationFrame(() => {
+          circle.setAttribute("stroke-dashoffset", String(circumference * (1 - ratio)));
+        });
+      }
+      svg.append(circle);
+    }
+  });
+
+  wrap.append(svg);
+  if (centre) {
+    // The hole is only so wide; long numbers step down rather than collide.
+    const digits = String(centre.value).length;
+    const fontSize = digits >= 6 ? 17 : digits === 5 ? 19 : digits === 4 ? 22 : 25;
+    wrap.append(el("div", { class: "rings-center" }, [
+      el("div", { class: "big", style: `font-size:${fontSize}px`, text: centre.value }),
+      centre.label ? el("div", { class: "cap", text: centre.label }) : null
+    ]));
+  }
   return wrap;
 }
 
-/* ——— metric bar ———————————————————————————————————————————— */
+export function ringLegend(goals) {
+  return el("div", { class: "ring-legend" }, goals.map(goal => el("div", { class: "ring-legend-row" }, [
+    el("i", { class: "ring-legend-dot", style: `background:${goal.color}` }),
+    el("span", { class: "ring-legend-name", text: goal.name }),
+    el("span", { class: "ring-legend-val" }, [
+      goal.display != null ? String(goal.display) : fmt(Math.round(goal.value)),
+      el("small", { text: ` / ${goal.displayTarget != null ? goal.displayTarget : fmt(Math.round(goal.target))}` })
+    ])
+  ])));
+}
 
-export function metric({ name, value, target, unit = "", tone = "", format = v => fmt(Math.round(v)) }) {
-  const ratio = target > 0 ? clamp(value / target, 0, 1) : 0;
-  return el("div", { class: "metric" }, [
-    el("div", { class: "metric-top" }, [
-      el("span", { class: "metric-name", text: name }),
-      el("span", { class: "metric-val", text: `${format(value)} / ${format(target)}${unit ? ` ${unit}` : ""}` })
+/* ——— metric tile ————————————————————————————————————————————— */
+
+export function tile({ name, value, unit, sub, color, soft, iconName, onclick }) {
+  return el("button", { class: "tile", type: "button", onclick: onclick || null }, [
+    el("div", { class: "tile-top" }, [
+      el("span", { class: "tile-icon", style: `background:${soft};color:${color}` }, [icon(iconName, 16, 2)]),
+      el("span", { class: "tile-name", text: name })
     ]),
-    el("div", { class: `bar ${tone}` }, [el("i", { style: `width:${ratio * 100}%` })])
+    el("div", { class: "tile-value" }, [String(value), unit ? el("small", { text: ` ${unit}` }) : null]),
+    sub ? el("div", { class: "tile-sub", text: sub }) : null
+  ]);
+}
+
+/* ——— a named, numbered progress line ————————————————————————— */
+
+export function metricLine({ name, value, target, unit = "", color, format = v => fmt(Math.round(v)) }) {
+  const ratio = target > 0 ? clamp(value / target, 0, 1) : 0;
+  return el("div", { class: "metric-line" }, [
+    el("div", { class: "metric-line-top" }, [
+      el("span", { class: "metric-line-name" }, [
+        el("i", { style: `background:${color}` }),
+        name
+      ]),
+      el("span", { class: "metric-line-val" }, [
+        el("strong", { text: format(value) }),
+        el("span", { text: ` / ${format(target)}${unit ? ` ${unit}` : ""}` })
+      ])
+    ]),
+    el("div", { class: "databar" }, [el("i", { style: `width:${ratio * 100}%;background:${color}` })])
   ]);
 }
 
@@ -165,6 +224,30 @@ export function toast(message, ms = 2400) {
   }, ms);
 }
 
+/* ——— food identity ——————————————————————————————————————————
+   A glance-level cue for what kind of food a row is. Decorative only — the
+   name is always right beside it. */
+
+const CATEGORY_EMOJI = {
+  bread: "🫓", rice: "🍚", dal: "🥣", usal: "🫘", sabzi: "🥬",
+  breakfast: "🍳", snack: "🍿", street: "🌯", nonveg: "🍗", egg: "🥚",
+  dairy: "🥛", fruit: "🍎", salad: "🥗", nuts: "🥜", sweet: "🍮",
+  drink: "☕", fat: "🧈", misc: "🧂"
+};
+
+export function foodEmoji(food) {
+  return (food && CATEGORY_EMOJI[food.cat]) || "🍽️";
+}
+
+export function foodAvatar(food) {
+  return el("span", { class: "food-avatar", "aria-hidden": "true", text: foodEmoji(food) });
+}
+
+/** A coloured icon chip for a card heading. */
+export function cardIcon(iconName, token) {
+  return el("span", { class: "card-icon", style: `background:var(${token}-soft);color:var(${token})` }, [icon(iconName, 16, 2)]);
+}
+
 /* ——— small helpers ————————————————————————————————————————— */
 
 export function card(children, cls = "") {
@@ -208,24 +291,38 @@ export function chipRow(options, { selected, onSelect, multi = false, size = "" 
 }
 
 /** Bar chart for 7/14-day trends. */
-export function barChart(points, { target = null, labelFor = p => p.label, hitWhen = null } = {}) {
+export function barChart(points, { target = null, labelFor = p => p.label, hitWhen = null, color = "var(--accent)", showValues = true } = {}) {
   const max = Math.max(target || 0, ...points.map(p => p.value), 1);
   // More is better for steps; for calories, staying at or under target is.
   const isHit = hitWhen || (value => Boolean(target) && value >= target);
   const chart = el("div", { class: "chart" });
-  for (const point of points) {
+  points.forEach((point, index) => {
     const height = Math.max(3, (point.value / max) * 100);
-    const col = el("div", { class: `col ${isHit(point.value) ? "hit" : ""}`.trim(), title: `${point.label}: ${fmt(point.value)}` }, [
-      el("i", { style: `height:${height}%` }),
+    const hit = isHit(point.value);
+    const isToday = index === points.length - 1;
+    const col = el("div", {
+      class: `col ${hit ? "hit" : ""} ${isToday ? "today" : ""}`.trim(),
+      title: `${point.label}: ${fmt(point.value)}`
+    }, [
+      showValues ? el("span", { class: "chart-value", text: point.value ? shortNumber(point.value) : "" }) : null,
+      el("i", { style: `height:${height}%;background:${hit ? color : "color-mix(in srgb, " + color + " 22%, transparent)"}` }),
       el("span", { text: labelFor(point) })
     ]);
     chart.append(col);
-  }
+  });
   return chart;
 }
 
+/** 8,452 → "8.5k" so seven labels fit across a phone. */
+export function shortNumber(value) {
+  if (!Number.isFinite(value) || value === 0) return "";
+  if (Math.abs(value) >= 10000) return `${Math.round(value / 1000)}k`;
+  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(Math.round(value));
+}
+
 /** Simple line chart used for weight. */
-export function lineChart(points, { height = 90 } = {}) {
+export function lineChart(points, { height = 90, color = "var(--m-weight)" } = {}) {
   if (points.length < 2) return emptyState("Log at least two weights to see the trend.");
   const values = points.map(p => p.value);
   const min = Math.min(...values);
@@ -241,11 +338,20 @@ export function lineChart(points, { height = 90 } = {}) {
   svg.setAttribute("viewBox", "0 0 100 100");
   svg.setAttribute("preserveAspectRatio", "none");
   svg.style.height = `${height}px`;
+  const gradientId = `spark-${Math.random().toString(36).slice(2, 8)}`;
   svg.innerHTML = `
-    <path d="${area}" fill="var(--accent-soft)" opacity=".7"></path>
-    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2"
+    <defs>
+      <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".28"></stop>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"></stop>
+      </linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#${gradientId})"></path>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
-    ${coords.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.6" fill="var(--accent)" vector-effect="non-scaling-stroke"></circle>`).join("")}`;
+    ${coords.map(([x, y], i) => i === coords.length - 1
+      ? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${color}" stroke="var(--surface)" stroke-width="2" vector-effect="non-scaling-stroke"></circle>`
+      : "").join("")}`;
   return svg;
 }
 

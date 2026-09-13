@@ -10,7 +10,7 @@ import { AMBIGUOUS } from "../data/foods.js";
 import { currentTargets } from "../engine/session.js";
 import { SLOT_LABELS } from "../engine/planner.js";
 import { dayTotals } from "../engine/nutrition.js";
-import { card, cardHead, sheet, closeSheet, closeAllSheets, toast, icon, emptyState, metric, confidenceDot, chipRow } from "./components.js";
+import { card, cardHead, sheet, closeSheet, closeAllSheets, toast, icon, emptyState, metricLine, confidenceDot, chipRow, foodAvatar, cardIcon } from "./components.js";
 
 /* ——————————————————————————— Food screen ——————————————————————————— */
 
@@ -34,14 +34,17 @@ export function renderFood(root, app) {
 
   screen.append(card([
     el("div", { class: "row between", style: "align-items:baseline" }, [
-      el("div", { style: "font-size:24px;font-weight:700;letter-spacing:-.025em",
-        text: `${fmt(Math.round(totals.kcal))} ${t("kcal")}` }),
+      el("div", { class: "row", style: "gap:10px;align-items:baseline" }, [
+        el("span", { class: "dot-lg", style: "background:var(--m-cal)" }),
+        el("span", { style: "font-size:25px;font-weight:730;letter-spacing:-.03em",
+          text: `${fmt(Math.round(totals.kcal))} ${t("kcal")}` })
+      ]),
       el("span", { class: "small muted", text: `${t("target")} ${fmt(targets.kcal)}` })
     ]),
     el("div", { style: "height:12px" }),
-    metric({ name: t("protein"), value: totals.protein, target: targets.protein, unit: "g", tone: "leaf" }),
-    el("div", { style: "height:10px" }),
-    metric({ name: t("fibre"), value: totals.fibre, target: targets.fibre, unit: "g", tone: "amber" })
+    metricLine({ name: t("protein"), value: totals.protein, target: targets.protein, unit: "g", color: "var(--m-protein)" }),
+    el("div", { style: "height:12px" }),
+    metricLine({ name: t("fibre"), value: totals.fibre, target: targets.fibre, unit: "g", color: "var(--m-fibre)" })
   ]));
 
   /* meals */
@@ -64,6 +67,7 @@ export function renderFood(root, app) {
         const n = nutritionFor(entry);
         if (!n) continue;
         block.append(el("div", { class: "list-row" }, [
+          foodAvatar(n.food),
           el("div", { class: "lead" }, [
             el("div", { class: "title", text: nameOf(n.food) }),
             el("div", { class: "sub row", style: "gap:6px" }, [
@@ -242,6 +246,7 @@ export function openFoodLogSheet(app, { prefill = null, slot = null, date = null
       const n = nutritionFor(item);
       if (!n) return;
       const row = el("div", { class: "list-row" }, [
+        foodAvatar(n.food),
         el("div", { class: "lead" }, [
           el("div", { class: "title row", style: "gap:6px" }, [confidenceDot(n.confidence, lang()), nameOf(n.food)]),
           el("div", { class: "sub", text: `${qtyLabel(item.qty)} ${unitLabel(item.unit, lang(), item.qty)} · ${n.grams} g${item.oil !== "normal" ? ` · ${OIL_LABELS[item.oil][lang()]}` : ""}` })

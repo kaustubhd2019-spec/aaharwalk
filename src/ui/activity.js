@@ -6,7 +6,7 @@ import { getState, getDay, updateDay, update } from "../core/store.js";
 import { currentTargets, recentDays, weightHistory } from "../engine/session.js";
 import { weightTrend } from "../engine/targets.js";
 import { weightNote } from "../engine/coach.js";
-import { card, cardHead, stat, sheet, closeSheet, toast, icon, barChart, lineChart, metric, emptyState, chipRow } from "./components.js";
+import { card, cardHead, sheet, closeSheet, toast, icon, barChart, lineChart, metricLine, emptyState, chipRow, cardIcon } from "./components.js";
 import { STEP_SOURCES, availableSources, parseSteps } from "../engine/steps-import.js";
 import { hasNativeCounter, nativePermitted, requestNativePermission, readNativeToday, nativeStatus } from "../engine/native-bridge.js";
 
@@ -42,7 +42,7 @@ export function renderActivity(root, app) {
     day.walkedSteps ? el("div", { class: "small muted", style: "margin-top:2px",
       text: `${fmt(day.walkedSteps)} ${t("counted_by_app")}` }) : null,
     el("div", { style: "height:12px" }),
-    metric({ name: t("step_goal"), value: day.steps || 0, target: targets.steps, tone: "sky" }),
+    metricLine({ name: t("step_goal"), value: day.steps || 0, target: targets.steps, color: "var(--m-step)" }),
     el("div", { style: "height:14px" }),
     el("button", { class: "btn block", type: "button", onclick: () => app.openWalk() },
       [icon("shoe", 17), t("start_walk")]),
@@ -51,7 +51,7 @@ export function renderActivity(root, app) {
     stepValues.some(v => v > 0)
       ? barChart(
           lastNDays(7).map((iso, i) => ({ label: weekdayShort(iso, localeCode()), value: stepValues[i] })),
-          { target: targets.steps }
+          { target: targets.steps, color: "var(--m-step)" }
         )
       : emptyState(t("no_steps_history")),
     el("div", { class: "row between", style: "margin-top:10px" }, [
@@ -69,8 +69,8 @@ export function renderActivity(root, app) {
       el("strong", { style: "font-size:16px", text: `${round((day.waterMl || 0) / 1000, 2)} L` }),
       el("span", { class: "metric-val", text: ` / ${round(targets.waterMl / 1000, 2)} L` })
     ])),
-    el("div", { class: "bar amber" }, [
-      el("i", { style: `width:${Math.min(100, ((day.waterMl || 0) / targets.waterMl) * 100)}%` })
+    el("div", { class: "databar" }, [
+      el("i", { style: `width:${Math.min(100, ((day.waterMl || 0) / targets.waterMl) * 100)}%;background:var(--m-water)` })
     ]),
     el("div", { style: "height:14px" }),
     el("div", { class: "chips" }, [250, 500, 750, 1000].map(ml => el("button", {
@@ -96,7 +96,7 @@ export function renderActivity(root, app) {
         el("span", { class: `tag ${trend.direction === "down" ? "leaf" : trend.direction === "up" ? "amber" : ""}`.trim(),
           text: `${trend.perWeekKg > 0 ? "+" : ""}${trend.perWeekKg} kg / ${lang() === "mr" ? "आठवडा" : "week"}` })
       ]),
-      lineChart(history.map(h => ({ label: h.date, value: h.kg }))),
+      lineChart(history.map(h => ({ label: h.date, value: h.kg })), { color: "var(--m-weight)" }),
       el("div", { class: "row between", style: "margin-top:6px" }, [
         el("span", { class: "tiny muted", text: prettyDate(history[0].date, localeCode()) }),
         el("span", { class: "tiny muted", text: prettyDate(history[history.length - 1].date, localeCode()) })
@@ -141,9 +141,9 @@ export function openWaterSheet(app) {
   const repaint = () => {
     const day = getDay(date);
     readout.textContent = `${round((day.waterMl || 0) / 1000, 2)} L`;
-    bar.replaceChildren(metric({
+    bar.replaceChildren(metricLine({
       name: t("water"), value: day.waterMl || 0, target: targets.waterMl, unit: "L",
-      tone: "amber", format: v => round(v / 1000, 2)
+      color: "var(--m-water)", format: v => round(v / 1000, 2)
     }));
   };
 

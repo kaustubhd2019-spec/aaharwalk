@@ -6,7 +6,7 @@ import { computeTargets, stepTarget, bmr, calorieTarget, maintenanceCalories, we
 import { planDay, suggestNext, nextSlotByClock, describeMeal } from "../src/engine/planner.js";
 import { buildWorkout } from "../src/engine/workouts.js";
 import { parseSteps } from "../src/engine/steps-import.js";
-import { createDetector, strideMetres, distanceKm, walkCalories } from "../src/engine/pedometer.js";
+import { createDetector, strideMetres, distanceKm, walkCalories, calibrationFrom, calibrationDrift, clampCalibration } from "../src/engine/pedometer.js";
 import { dayStepTotal, nativeIsSource, hasNativeCounter } from "../src/engine/native-bridge.js";
 import { FOODS, FOOD_BY_ID, AMBIGUOUS } from "../src/data/foods.js";
 import { MEAL_IDEAS } from "../src/data/mealIdeas.js";
@@ -438,6 +438,121 @@ test("distance and calories follow from steps", () => {
   near(distanceKm(1000, 173), 0.716, 0.01, "1000 steps");
   ok(walkCalories(1000, 82) > 0 && walkCalories(1000, 82) < 60, "conservative burn");
   ok(walkCalories(1000, 90) > walkCalories(1000, 60), "heavier burns more");
+});
+
+/* ——— realistic gait and false positives ————————————————————— */
+
+const rand = seed => { let s = seed; return () => ((s = (s * 16807) % 2147483647) / 2147483647 - 0.5) * 2; };
+
+/* A footfall is an impulse, not a sine: a heel strike, then a second smaller
+   impact as the foot rolls or the phone settles in a pocket. That second
+   impact is what a naive counter turns into an extra step. */
+function impulseGait({ steps, cadenceHz = 1.9, amp = 3, secondary = 0.6, secondaryAt = 0.42, hz = 50, noise = 0.2, seed = 1 }) {
+  const out = [];
+  const rnd = rand(seed);
+  const period = 1 / cadenceHz;
+  const pulse = (dt, width) => Math.exp(-((dt / width) ** 2));
+  for (let i = 0; i < steps * period * hz; i++) {
+    const t = i / hz;
+    let a = 0;
+    for (let k = -1; k <= steps; k++) {
+      const t0 = k * period;
+      a += amp * pulse(t - t0, 0.055);
+      a -= amp * 0.45 * pulse(t - (t0 + 0.12), 0.07);
+      a += amp * secondary * pulse(t - (t0 + secondaryAt * period), 0.06);
+    }
+    out.push([rnd() * noise, rnd() * noise, 9.81 + a + rnd() * noise, t * 1000]);
+  }
+  return out;
+}
+
+/* Broadband, irregular — engine hum, tyre roar and bumps whenever they come. */
+function roadNoise({ seconds = 300, hz = 50, seed = 5, rough = 1 }) {
+  const out = [];
+  const rnd = rand(seed);
+  let sway = 0;
+  for (let i = 0; i < seconds * hz; i++) {
+    const t = i / hz;
+    sway = sway * 0.98 + rnd() * 0.25 * rough;
+    const hum = Math.sin(2 * Math.PI * 11 * t) * 0.5 * rough;
+    const bump = ((i * 7919) % 250 === 0) ? rnd() * 4 * rough : 0;
+    out.push([rnd() * 0.7 * rough, rnd() * 0.7 * rough, 9.81 + sway + hum + rnd() * 1.2 * rough + bump, t * 1000]);
+  }
+  return out;
+}
+
+function detect(samples) {
+  const d = createDetector({});
+  for (const [x, y, z, t] of samples) { d.push(x, y, z, t); d.idle(t); }
+  return d.steps;
+}
+
+test("counts a real footfall shape within 5% at every walking speed", () => {
+  for (const cadence of [1.4, 1.6, 1.9, 2.2, 2.5, 2.8]) {
+    const got = detect(impulseGait({ steps: 200, cadenceHz: cadence }));
+    ok(Math.abs(got - 200) <= 10, `${cadence} Hz: expected ~200, got ${got}`);
+  }
+});
+
+test("a second bounce inside the stride is not a second step", () => {
+  // This is the over-counting users hit: a pocket settle counted as its own step.
+  for (const [cadence, secondary, at] of [[1.6, 0.8, 0.45], [1.6, 0.9, 0.5], [1.4, 0.6, 0.42], [1.9, 0.8, 0.45]]) {
+    const got = detect(impulseGait({ steps: 200, cadenceHz: cadence, secondary, secondaryAt: at }));
+    ok(got <= 220, `cadence ${cadence}, secondary ${secondary}: counted ${got} for 200 steps`);
+    ok(got >= 180, `cadence ${cadence}, secondary ${secondary}: counted only ${got}`);
+  }
+});
+
+test("counts the same however fast the phone reports", () => {
+  const counts = [20, 30, 50, 60, 100, 200].map(hz => detect(impulseGait({ steps: 200, hz })));
+  const min = Math.min(...counts);
+  const max = Math.max(...counts);
+  ok(max - min <= 10, `sample-rate spread too wide: ${counts.join(", ")}`);
+  ok(min >= 185 && max <= 215, `out of range: ${counts.join(", ")}`);
+});
+
+test("a gentle walk still registers", () => {
+  for (const amp of [0.8, 1.2, 2]) {
+    const got = detect(impulseGait({ steps: 200, amp }));
+    ok(got >= 180, `amplitude ${amp}: counted only ${got} of 200`);
+  }
+});
+
+test("riding in a vehicle does not rack up steps", () => {
+  for (const rough of [0.6, 1.4, 2.2]) {
+    const got = detect(roadNoise({ seconds: 300, rough, seed: 5 + rough * 10 }));
+    ok(got <= 40, `road roughness ${rough}: ${got} phantom steps in 5 minutes`);
+  }
+});
+
+test("a phone sitting still counts nothing at all", () => {
+  const rnd = rand(3);
+  const stillness = [];
+  for (let i = 0; i < 300 * 50; i++) stillness.push([rnd() * 0.05, rnd() * 0.05, 9.81 + rnd() * 0.05, (i / 50) * 1000]);
+  eq(detect(stillness), 0);
+});
+
+/* ——— calibration ————————————————————————————————————————————— */
+
+test("a calibration walk turns into a correction factor", () => {
+  near(calibrationFrom(23, 20), 0.87, 0.01, "counted high");
+  near(calibrationFrom(18, 20), 1.11, 0.01, "counted low");
+  eq(calibrationFrom(20, 20), 1);
+});
+
+test("calibration reports drift in plain percentages", () => {
+  eq(calibrationDrift(calibrationFrom(23, 20)), 15);
+  eq(calibrationDrift(1), 0);
+  ok(calibrationDrift(calibrationFrom(18, 20)) < 0, "under-counting reads negative");
+});
+
+test("a mis-entered calibration cannot wreck the count", () => {
+  eq(calibrationFrom(1, 100), 2);      // clamped
+  eq(calibrationFrom(100, 1), 0.5);    // clamped
+  eq(calibrationFrom(0, 20), 1);
+  eq(calibrationFrom(20, 0), 1);
+  eq(clampCalibration("nonsense"), 1);
+  eq(clampCalibration(-4), 1);
 });
 
 /* ——— combining step sources ————————————————————————————————— */

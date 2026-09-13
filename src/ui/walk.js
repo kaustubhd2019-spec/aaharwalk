@@ -11,15 +11,15 @@ import { t, lang } from "../core/i18n.js";
 import { getState, updateDay, update, getDay } from "../core/store.js";
 import {
   startCounting, motionSupported, needsMotionPermission, requestMotionPermission,
-  secureEnough, acquireWakeLock, distanceKm, walkCalories, SENSITIVITY
+  secureEnough, acquireWakeLock, distanceKm, walkCalories,
+  calibrationFrom, calibrationDrift, clampCalibration
 } from "../engine/pedometer.js";
 import { currentTargets } from "../engine/session.js";
 import { nativeIsSource, dayStepTotal, readNativeToday } from "../engine/native-bridge.js";
-import { icon, toast, sheet, closeSheet, chipRow, metric } from "./components.js";
+import { icon, toast, sheet, closeSheet, chipRow, metricLine } from "./components.js";
 
 export function openWalkMode(app) {
   const profile = getState().profile;
-  const sensitivity = getState().settings.walkSensitivity || "normal";
 
   if (!motionSupported() || !secureEnough()) {
     return explainUnavailable(app);
@@ -79,7 +79,9 @@ export function openWalkMode(app) {
   function paint() {
     stepsNode.textContent = fmt(totalSteps());
     statusNode.textContent = running
-      ? (sampleCount > 0 ? t("counting") : t("waiting_for_sensor"))
+      ? (sampleCount === 0 ? t("waiting_for_sensor")
+        : counter && counter.walking ? t("walking_detected")
+        : t("watching_for_walking"))
       : (startedAt || baseSteps ? t("paused_label") : t("ready_to_walk"));
 
     const minutes = Math.floor(totalMs() / 60000);
@@ -92,8 +94,8 @@ export function openWalkMode(app) {
 
     const targets = currentTargets();
     const dayTotal = (getDay(todayISO()).steps || 0) + totalSteps();
-    goalNode.replaceChildren(metric({
-      name: t("todays_steps"), value: dayTotal, target: targets.steps, tone: "sky"
+    goalNode.replaceChildren(metricLine({
+      name: t("todays_steps"), value: dayTotal, target: targets.steps, color: "var(--m-step)"
     }));
 
     noteNode.textContent = running && sampleCount === 0 && sensorWarned
@@ -127,7 +129,7 @@ export function openWalkMode(app) {
     }
 
     counter = startCounting({
-      sensitivity: getState().settings.walkSensitivity || sensitivity,
+      calibration: getState().settings.walkCalibration,
       onStep: count => { liveSteps = count; stepsNode.textContent = fmt(totalSteps()); },
       onSample: n => {
         sampleCount = n;
@@ -259,22 +261,109 @@ export function openWalkMode(app) {
   }
 
   function openSettings() {
+    const factor = clampCalibration(getState().settings.walkCalibration);
+    const drift = calibrationDrift(factor);
+
     sheet({
-      title: t("settings_label"),
+      title: t("check_counting"),
       body: el("div", { class: "stack" }, [
-        el("div", { class: "field" }, [
-          el("label", { text: t("step_sensitivity") }),
-          chipRow(Object.entries(SENSITIVITY).map(([value, meta]) => ({ value, label: meta.label[lang()] || meta.label.en })), {
-            selected: getState().settings.walkSensitivity || "normal",
-            onSelect: value => update(s => { s.settings.walkSensitivity = value; })
-          }),
-          el("span", { class: "hint", text: t("sensitivity_hint") })
-        ]),
+        el("p", { class: "small", text: t("calibrate_why") }),
+        factor !== 1
+          ? el("div", { class: "card flat tight" }, [
+              el("p", { class: "small", style: "font-weight:600",
+                text: drift > 0 ? t("calibrated_high").replace("{n}", drift)
+                    : drift < 0 ? t("calibrated_low").replace("{n}", Math.abs(drift))
+                    : t("calibrated_exact") })
+            ])
+          : null,
+        el("button", { class: "btn block", type: "button",
+          onclick: () => { closeSheet(); startCalibration(); } }, [icon("shoe", 17), t("calibrate_start")]),
+        factor !== 1
+          ? el("button", { class: "btn subtle block", type: "button", text: t("calibrate_reset"),
+              onclick: () => {
+                update(s => { s.settings.walkCalibration = 1; });
+                closeSheet();
+                toast(t("saved"));
+              } })
+          : null,
         el("p", { class: "small muted", text: t("walk_limits") })
       ]),
-      footer: [el("button", { class: "btn block", type: "button", text: t("done"), onclick: () => { closeSheet(); paint(); } })]
+      footer: [el("button", { class: "btn subtle block", type: "button", text: t("done"), onclick: () => { closeSheet(); paint(); } })]
     });
   }
+
+  /**
+   * Walk a known number of steps and tell the app the real figure. Everything
+   * counted from then on is scaled to match how this phone, in this pocket,
+   * with this gait, actually behaves.
+   */
+  function startCalibration() {
+    const TARGET = 20;
+    let session = null;
+    let counted = 0;
+
+    const readout = el("div", { style: "font-size:46px;font-weight:730;letter-spacing:-.03em;line-height:1", text: "0" });
+    const hint = el("p", { class: "small muted center", text: t("calibrate_walk_now").replace("{n}", TARGET) });
+    const actualInput = el("input", {
+      class: "input", type: "number", inputmode: "numeric", min: "1", max: "500", value: String(TARGET)
+    });
+    const step2 = el("div", { class: "stack", hidden: true }, [
+      el("div", { class: "field" }, [
+        el("label", { text: t("calibrate_how_many") }),
+        actualInput
+      ])
+    ]);
+
+    const startButton = el("button", { class: "btn", type: "button" }, [icon("play", 16), t("start")]);
+    const doneButton = el("button", { class: "btn", type: "button", text: t("save"), hidden: true });
+
+    startButton.addEventListener("click", async () => {
+      if (session) return;
+      if (needsMotionPermission()) {
+        const result = await requestMotionPermission();
+        if (result !== "granted") { toast(t("motion_denied"), 4000); return; }
+      }
+      // Count raw here: we are measuring the phone, not applying an old guess.
+      session = startCounting({ calibration: 1, onStep: n => { counted = n; readout.textContent = String(n); } });
+      startButton.hidden = true;
+      doneButton.hidden = false;
+      hint.textContent = t("calibrate_counting").replace("{n}", TARGET);
+    });
+
+    doneButton.addEventListener("click", () => {
+      if (session) { session.stop(); session = null; }
+      if (!step2.hidden) {
+        const actual = Math.round(Number(actualInput.value) || 0);
+        if (!(actual > 0)) { toast(t("calibrate_need_number")); return; }
+        const next = calibrationFrom(counted, actual);
+        update(s => { s.settings.walkCalibration = next; });
+        const drift = calibrationDrift(next);
+        closeSheet();
+        toast(drift === 0 ? t("calibrated_exact")
+            : drift > 0 ? t("calibrated_high").replace("{n}", drift)
+            : t("calibrated_low").replace("{n}", Math.abs(drift)), 5000);
+        return;
+      }
+      if (counted < 3) { toast(t("calibrate_too_few"), 4000); return; }
+      step2.hidden = false;
+      hint.textContent = t("calibrate_confirm").replace("{n}", counted);
+      doneButton.textContent = t("save");
+    });
+
+    sheet({
+      title: t("check_counting"),
+      onClose: () => { if (session) { session.stop(); session = null; } },
+      body: el("div", { class: "stack center" }, [
+        el("p", { class: "small", text: t("calibrate_how") }),
+        readout,
+        el("div", { class: "tiny muted", style: "letter-spacing:.1em;text-transform:uppercase", text: t("steps") }),
+        hint,
+        step2
+      ]),
+      footer: [startButton, doneButton]
+    });
+  }
+
 }
 
 function walkStat(label, value) {
