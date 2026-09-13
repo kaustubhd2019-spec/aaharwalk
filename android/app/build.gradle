@@ -1,0 +1,79 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.aaharwalk.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.aaharwalk.app"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    /*
+     * A fixed key, checked in, so every build signs the same way.
+     *
+     * Android refuses to install an update signed with a different key, and
+     * Gradle's default debug keystore is generated fresh on each CI machine —
+     * which made every new APK fail with "App not installed" until the old one
+     * was removed. This keystore is throwaway: it protects nothing, and it must
+     * be replaced with your own before distributing the app anywhere real.
+     */
+    signingConfigs {
+        sideload {
+            storeFile file("sideload.keystore")
+            storePassword "aaharwalk"
+            keyAlias "aaharwalk"
+            keyPassword "aaharwalk"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.sideload
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.sideload
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The web app is the single source of truth. It is copied in at build time
+    // rather than duplicated inside the Android project.
+    sourceSets {
+        main {
+            assets.srcDirs += [file("$projectDir/build/webapp")]
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.11.0"
+}
+
+/* Copy the PWA into assets/www so the WebView can serve it locally. */
+tasks.register("copyWebApp", Copy) {
+    from(rootProject.projectDir.parentFile) {
+        include "index.html"
+        include "styles.css"
+        include "pwa.js"
+        include "sw.js"
+        include "manifest.webmanifest"
+        include "src/**"
+        include "assets/**"
+    }
+    into file("$projectDir/build/webapp/www")
+}
+
+tasks.named("preBuild") {
+    dependsOn "copyWebApp"
+}

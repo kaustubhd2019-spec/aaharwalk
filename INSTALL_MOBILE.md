@@ -1,30 +1,65 @@
-# Install AaharWalk on mobile
+# Install AaharWalk on your phone
 
-This folder is now a Progressive Web App (PWA). Once hosted on HTTPS, it installs with a normal home-screen icon and opens without the browser address bar.
+AaharWalk is a Progressive Web App. Once it is hosted over HTTPS it installs with its own
+home-screen icon, opens without a browser address bar, and works offline.
 
-## Fastest way to install
+## 1. Host the folder
 
-1. Upload the contents of this folder to any static host, such as Netlify, GitHub Pages, Vercel, Firebase Hosting, or your own HTTPS website.
-2. Open the hosted link on your phone.
+Upload the contents of this folder to any static HTTPS host — Netlify, GitHub Pages, Vercel,
+Firebase Hosting, Cloudflare Pages, or your own website. There is no build step: upload the
+files as they are.
 
-### Android
+Then open the hosted link on your phone.
 
+## 2. Install
+
+**Android (Chrome)**
 1. Open the hosted link in Chrome.
-2. Tap **Install app** if the button appears.
-3. Otherwise tap Chrome **⋮** menu → **Install app** or **Add to Home screen**.
-4. AaharWalk will appear with its own app icon.
+2. Tap **Install** if the prompt appears, or use **⋮ → Install app / Add to Home screen**.
 
-### iPhone
-
+**iPhone (Safari)**
 1. Open the hosted link in Safari.
-2. Tap **Share**.
-3. Tap **Add to Home Screen**.
-4. Tap **Add**.
+2. Tap **Share → Add to Home Screen → Add**.
 
-## Data note
+## 3. Steps
 
-Your steps, meals, custom foods, and history are saved on the phone/browser where you use the app. Use **Export full backup** before changing phones or clearing browser data.
+**Let the app count them.** Tap **Count my walk** on the Home screen and the phone's
+accelerometer counts your steps live. The app keeps the screen awake, so you can put the
+phone in your pocket and walk. On iPhone, Safari asks permission the first time.
 
-## For a real APK
+This only works while the app is open — browsers stop sensors once the screen locks, and no
+web app can get around that. It covers deliberate walks, not the whole day.
 
-Use the separate Android Studio source package. Open it in Android Studio and build an APK.
+**Or bring in a whole day's total from an app you already use:**
+
+- **Step Set Go** — open it, tap Share on today's steps, choose **AaharWalk**. The count is
+  read from the shared text and pre-filled. (Installing to the home screen is what makes
+  AaharWalk appear in the share sheet.)
+- **Google Fit / Samsung Health / your phone's health app** — share or copy today's step
+  count and paste it into the steps sheet.
+
+Set your source once in **Activity → Log steps** and the right instructions stay put.
+
+(No browser API can read another app's data directly, so sharing or pasting the number is the
+honest way to do this without an account or a server.)
+
+## Notifications
+
+To get water reminders as phone notifications rather than only in-app, allow notifications
+from **Profile → Reminders**.
+
+## Your data
+
+Steps, meals, workouts and history live on the phone and browser where you use the app.
+Use **Profile → Your data → Export a backup** before switching phones or clearing browser data,
+and **Restore a backup** on the new one.
+
+## Testing on a computer first
+
+ES modules are blocked on `file://` pages, so run a local server from this folder:
+
+```
+python3 -m http.server 8000
+```
+
+and open `http://localhost:8000`.

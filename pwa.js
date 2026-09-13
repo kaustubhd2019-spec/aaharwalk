@@ -1,71 +1,57 @@
-/* AaharWalk install helper */
+/* AaharWalk — service worker registration and the install prompt. */
 (function () {
   "use strict";
 
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.navigator.standalone === true;
+  var standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
 
-  function $(id) {
-    return document.getElementById(id);
+  // Inside the Android app every file already ships in the APK, and the shell
+  // list would not resolve against the asset loader, so there is nothing for a
+  // service worker to do.
+  var inAndroidApp = typeof window.AndroidSteps !== "undefined";
+
+  if (!inAndroidApp && "serviceWorker" in navigator && window.isSecureContext) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () { /* offline support unavailable */ });
+    });
   }
 
-  function showInstallCard(message) {
-    const card = $("installCard");
-    if (!card || isStandalone) return;
-    card.hidden = false;
-    const note = $("installHelp");
-    if (note && message) note.textContent = message;
+  var deferred = null;
+  var card = null;
+  var button = null;
+
+  function nodes() {
+    card = card || document.getElementById("installCard");
+    button = button || document.getElementById("installAppButton");
   }
 
-  function hideInstallCard() {
-    const card = $("installCard");
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    deferred = event;
+    nodes();
+    if (card && !standalone) card.hidden = false;
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferred = null;
+    nodes();
     if (card) card.hidden = true;
-  }
+  });
 
-  if ("serviceWorker" in navigator && window.isSecureContext) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch(() => {
-        showInstallCard("App install works after this folder is hosted on HTTPS, such as Netlify, GitHub Pages, or your own website.");
+  document.addEventListener("DOMContentLoaded", function () {
+    if (inAndroidApp) { return; }   // already a real installed app
+    nodes();
+    var dismiss = document.getElementById("installDismiss");
+    if (dismiss) {
+      dismiss.addEventListener("click", function () { if (card) card.hidden = true; });
+    }
+    if (!button) return;
+    button.addEventListener("click", function () {
+      if (!deferred) return;
+      deferred.prompt();
+      deferred.userChoice.then(function () {
+        deferred = null;
+        if (card) card.hidden = true;
       });
     });
-  } else if (!isStandalone) {
-    showInstallCard("For normal app installation, host this folder on HTTPS, then open it in Chrome or Safari and choose Install/Add to Home Screen.");
-  }
-
-  let deferredPrompt = null;
-
-  window.addEventListener("beforeinstallprompt", event => {
-    event.preventDefault();
-    deferredPrompt = event;
-    showInstallCard("Tap Install app to add AaharWalk to your phone like a normal app.");
-    const button = $("installAppButton");
-    if (button) button.disabled = false;
-  });
-
-  window.addEventListener("appinstalled", () => {
-    deferredPrompt = null;
-    hideInstallCard();
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const button = $("installAppButton");
-    if (button) {
-      button.addEventListener("click", async () => {
-        if (!deferredPrompt) {
-          showInstallCard("Open this hosted site in Chrome and use browser menu → Install app. On iPhone, Safari → Share → Add to Home Screen.");
-          return;
-        }
-
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-      });
-    }
-
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (isIOS && !isStandalone) {
-      showInstallCard("On iPhone: open in Safari, tap Share, then Add to Home Screen.");
-    }
   });
 })();
