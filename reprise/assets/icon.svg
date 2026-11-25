@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#20263d"/><stop offset="1" stop-color="#0b0d12"/></linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd36b"/><stop offset="1" stop-color="#ff7a2f"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#sky)"/>
+  <g id="art">
+    <g stroke="#ffb547" stroke-width="22" stroke-linecap="round">
+      <line x1="256" y1="152" x2="256" y2="108"/>
+      <line x1="388" y1="208" x2="419" y2="177"/>
+      <line x1="124" y1="208" x2="93" y2="177"/>
+      <line x1="327" y1="168" x2="344" y2="128"/>
+      <line x1="185" y1="168" x2="168" y2="128"/>
+    </g>
+    <path d="M100 344a156 156 0 0 1 312 0z" fill="url(#sun)"/>
+    <rect x="62" y="352" width="388" height="24" rx="12" fill="#ffc95c"/>
+    <rect x="140" y="398" width="232" height="18" rx="9" fill="#ff8a3d" opacity="0.55"/>
+    <rect x="200" y="434" width="112" height="14" rx="7" fill="#ff8a3d" opacity="0.3"/>
+    <path d="M256 214l-62 62h40v58h44v-58h40z" fill="#1a1006" opacity="0.88"/>
+  </g>
+</svg>

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>RepRise — Move to stop the alarm</title>
+  <meta name="description" content="A wake-up alarm that only stops after you do squats, push-ups, jumping jacks or dance in front of your camera.">
+  <meta name="theme-color" content="#0b0d12">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="RepRise">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="modulepreload" href="js/app.js">
+</head>
+<body>
+  <!-- ============ HOME ============ -->
+  <section id="view-home" class="view" aria-label="Alarms">
+    <header class="topbar">
+      <div class="brand">
+        <img src="assets/icon.svg" alt="" width="30" height="30">
+        <span>RepRise</span>
+      </div>
+      <button type="button" class="icon-btn" id="btn-settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.5 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5L19.4 13ZM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" transform="translate(-1 0)"/></svg>
+      </button>
+    </header>
+
+    <div class="hero">
+      <div class="hero-label">Next alarm</div>
+      <div class="hero-time" id="next-time">No alarm</div>
+      <div class="hero-sub" id="next-sub">Add an alarm below to get started</div>
+      <button type="button" class="btn primary big" id="btn-night">
+        <span aria-hidden="true">🌙</span> Start night mode
+      </button>
+      <p class="hero-hint">At bedtime: start night mode, plug in your charger and leave RepRise on screen.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span class="stat-num" id="stat-streak">0</span><span class="stat-label">day streak 🔥</span></div>
+      <div class="stat"><span class="stat-num" id="stat-total">0</span><span class="stat-label">wake-ups done</span></div>
+      <div class="stat"><span class="stat-num" id="stat-reps">0</span><span class="stat-label">reps &amp; secs moved</span></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Alarms</h2>
+      <button type="button" class="btn small accent" id="btn-add">+ Add alarm</button>
+    </div>
+    <ul class="alarm-list" id="alarm-list"></ul>
+    <div class="empty" id="empty-alarms" hidden>
+      <div class="empty-emoji" aria-hidden="true">⏰</div>
+      <p>No alarms yet. Add one, pick your exercise, and RepRise won't stop ringing until you've done it.</p>
+    </div>
+
+    <div class="section-head"><h2>Practice</h2></div>
+    <p class="muted small-text">Try a challenge (no alarm sound) to find a good spot for your phone.</p>
+    <div class="practice-grid" id="practice-grid"></div>
+
+    <details class="howto">
+      <summary>How it works &amp; tips</summary>
+      <ol>
+        <li><b>Set an alarm</b> and choose your challenge: squats, push-ups, jumping jacks or dancing, and how many.</li>
+        <li><b>At bedtime, tap Start night mode.</b> Keep the phone on charge with RepRise open. The screen goes almost black and stays awake.</li>
+        <li><b>Prop the phone up 1.5–2 m away</b> so the camera can see your whole body. Do a practice run first.</li>
+        <li><b>When it rings</b>, do the exercise in front of the camera. The alarm only stops when you finish. It gets quieter while you're moving and loud again if you stop.</li>
+      </ol>
+      <p class="muted"><b>Why night mode?</b> Phones don't let websites wake themselves up from sleep, so RepRise has to stay open on screen. If you close it, the alarm can't ring. If you close it while it's ringing, it starts again as soon as you reopen it.</p>
+      <p class="muted"><b>Volume:</b> turn your media volume up. Everything runs on your phone. No account, no internet needed after the first load, and the camera video never leaves your device.</p>
+    </details>
+
+    <div class="install" id="install-card" hidden>
+      <div>
+        <b>Install RepRise</b>
+        <p id="install-help">Add it to your home screen so it opens like a normal app.</p>
+      </div>
+      <button type="button" class="btn small accent" id="btn-install">Install</button>
+    </div>
+  </section>
+
+  <!-- ============ EDIT ALARM ============ -->
+  <section id="view-edit" class="view" hidden aria-label="Edit alarm">
+    <header class="topbar">
+      <button type="button" class="text-btn" id="edit-cancel">Cancel</button>
+      <h1 id="edit-title">New alarm</h1>
+      <button type="button" class="text-btn strong" id="edit-save">Save</button>
+    </header>
+    <form id="edit-form" class="form" autocomplete="off">
+      <input type="time" id="f-time" class="time-input" required aria-label="Alarm time">
+
+      <div class="field">
+        <div class="field-label">Repeat</div>
+        <div class="days" id="f-days" role="group" aria-label="Repeat days"></div>
+        <div class="quick-days">
+          <button type="button" data-days="0,1,2,3,4,5,6">Every day</button>
+          <button type="button" data-days="1,2,3,4,5">Weekdays</button>
+          <button type="button" data-days="0,6">Weekends</button>
+          <button type="button" data-days="">Once</button>
+        </div>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Label</span>
+        <input type="text" id="f-label" maxlength="40" placeholder="Rise and shine!">
+      </label>
+
+      <div class="field">
+        <div class="field-label">Challenge to stop the alarm</div>
+        <div class="challenge-grid" id="f-challenge" role="radiogroup" aria-label="Challenge"></div>
+      </div>
+
+      <div class="field">
+        <div class="field-label" id="f-amount-label">How many?</div>
+        <div class="chips" id="f-amount" role="radiogroup" aria-labelledby="f-amount-label"></div>
+        <div class="custom-amount" id="f-custom-wrap" hidden>
+          <input type="number" id="f-custom" inputmode="numeric" min="1" max="300" aria-label="Custom amount">
+          <span id="f-custom-unit">reps</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Alarm sound</div>
+        <div class="sound-row">
+          <select id="f-sound" aria-label="Alarm sound"></select>
+          <button type="button" class="btn small" id="f-preview" aria-label="Preview sound">▶ Play</button>
+        </div>
+        <button type="button" class="btn small ghost upload-btn" id="f-upload">🎵 Use my own sound file…</button>
+        <input type="file" id="f-file" accept="audio/*" hidden>
+      </div>
+
+      <label class="switch-row">
+        <span>Vibrate <small class="muted">(Android)</small></span>
+        <input type="checkbox" id="f-vibrate" class="switch">
+      </label>
+
+      <button type="button" class="btn wide" id="edit-test">Test this alarm now</button>
+      <button type="button" class="btn wide danger" id="edit-delete" hidden>Delete alarm</button>
+    </form>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="view-settings" class="view" hidden aria-label="Settings">
+    <header class="topbar">
+      <button type="button" class="text-btn" id="settings-back">‹ Back</button>
+      <h1>Settings</h1>
+      <span class="topbar-spacer"></span>
+    </header>
+    <div class="form">
+      <div class="field">
+        <div class="field-label">Form strictness</div>
+        <div class="segmented" id="s-strictness" role="radiogroup" aria-label="Form strictness">
+          <button type="button" data-v="easy">Easy</button>
+          <button type="button" data-v="normal">Normal</button>
+          <button type="button" data-v="strict">Strict</button>
+        </div>
+        <p class="muted small-text" id="s-strictness-help"></p>
+      </div>
+      <div class="field">
+        <div class="field-label">Camera</div>
+        <div class="segmented" id="s-camera" role="radiogroup" aria-label="Camera">
+          <button type="button" data-v="user">Front (selfie)</button>
+          <button type="button" data-v="environment">Back</button>
+        </div>
+      </div>
+      <label class="switch-row"><span>Volume starts softer, then gets loud</span><input type="checkbox" id="s-ramp" class="switch"></label>
+      <label class="switch-row"><span>Quieter while I'm exercising</span><input type="checkbox" id="s-duck" class="switch"></label>
+      <label class="switch-row"><span>Show skeleton on camera</span><input type="checkbox" id="s-skeleton" class="switch"></label>
+      <label class="switch-row"><span>24-hour clock</span><input type="checkbox" id="s-24h" class="switch"></label>
+
+      <div class="field">
+        <div class="field-label">My sounds</div>
+        <ul class="plain-list" id="s-sounds"></ul>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Recent wake-ups</div>
+        <ul class="plain-list" id="s-history"></ul>
+      </div>
+
+      <p class="muted small-text">RepRise runs entirely on your phone. Pose detection uses Google MediaPipe (Apache 2.0) on-device; camera frames are never uploaded or saved.</p>
+    </div>
+  </section>
+
+  <!-- ============ NIGHT MODE ============ -->
+  <section id="view-night" class="view night" hidden aria-label="Night mode">
+    <div class="night-inner" id="night-inner">
+      <div class="night-clock" id="night-clock">--:--</div>
+      <div class="night-date" id="night-date"></div>
+      <div class="night-next" id="night-next"></div>
+      <ul class="night-checks" id="night-checks"></ul>
+    </div>
+    <button type="button" class="btn ghost night-exit" id="btn-night-exit">Exit night mode</button>
+  </section>
+
+  <!-- ============ RINGING / CHALLENGE ============ -->
+  <section id="view-ring" class="view ring" hidden aria-label="Alarm">
+    <div class="ring-top">
+      <div class="ring-clock" id="ring-clock">--:--</div>
+      <div class="ring-label" id="ring-label">Wake up!</div>
+    </div>
+    <div class="stage" id="stage">
+      <video id="cam" playsinline muted autoplay></video>
+      <canvas id="overlay"></canvas>
+      <div class="stage-msg" id="stage-msg">Starting camera…</div>
+      <div class="rep-flash" id="rep-flash" aria-hidden="true"></div>
+    </div>
+    <div class="counter" aria-live="polite">
+      <span class="count-now" id="count-now">0</span>
+      <span class="count-of">/ <span id="count-target">10</span></span>
+      <span class="count-unit" id="count-unit">squats</span>
+    </div>
+    <div class="progress" aria-hidden="true"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="coach" id="coach">Get ready…</div>
+    <p class="ring-note" id="ring-note">The alarm stops when you finish.</p>
+    <button type="button" class="btn ghost" id="btn-ring-quit" hidden>Quit practice</button>
+
+    <div class="fallback" id="fallback" hidden>
+      <p><b>Camera isn't working</b> <span id="fallback-reason"></span></p>
+      <button type="button" class="btn small" id="btn-cam-retry">Try the camera again</button>
+      <p class="muted small-text">Backup challenge: solve these to stop the alarm.</p>
+      <div class="math" id="math-q"></div>
+      <div class="math-row">
+        <input type="number" inputmode="numeric" id="math-a" aria-label="Answer">
+        <button type="button" class="btn small accent" id="math-go">Check</button>
+      </div>
+      <p class="muted small-text" id="math-progress"></p>
+    </div>
+
+    <button type="button" class="tap-overlay" id="tap-overlay" hidden>
+      <span class="tap-emoji" aria-hidden="true">⏰</span>
+      <span>Tap to start</span>
+    </button>
+  </section>
+
+  <!-- ============ DONE ============ -->
+  <section id="view-done" class="view done" hidden aria-label="Done">
+    <div class="done-sun" aria-hidden="true">☀️</div>
+    <h1 id="done-title">Good morning!</h1>
+    <p class="done-detail" id="done-detail"></p>
+    <p class="done-streak" id="done-streak"></p>
+    <button type="button" class="btn primary big" id="btn-done">Back to alarms</button>
+  </section>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
